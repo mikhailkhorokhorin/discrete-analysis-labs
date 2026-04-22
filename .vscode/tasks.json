@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "labTarget",
+            "type": "pickString",
+            "description": "Select target to build",
+            "options": [
+                "lab1_main",
+                "lab1_benchmark"
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "label": "CMake Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                ".",
+                "-B",
+                "build",
+                "-DCMAKE_C_COMPILER=gcc-14",
+                "-DCMAKE_CXX_COMPILER=g++-14",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+            ]
+        },
+        {
+            "label": "Build selected target",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--target",
+                "${input:labTarget}"
+            ],
+            "dependsOn": "CMake Configure",
+            "group": "build"
+        }
+    ]
+}

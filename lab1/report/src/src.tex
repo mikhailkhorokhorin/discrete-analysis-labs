@@ -1,0 +1,122 @@
+\section{Описание}
+
+Требуется написать реализацию алгоритма поразрядной сортировки для пар \enquote{дата-значение}.
+
+Основная идея поразрядной сортировки заключается в том, чтобы каждый входной элемент $x$ разбить на разряды и сортировать стабильной сортировкой по каждому разряду.
+
+\pagebreak
+
+\section{Исходный код}
+
+На каждой непустой строке входного файла располагается пара \enquote{ключ-значение}, поэтому создадим новую структуру $Pair$, в которой будем хранить исходную строку и преобразованный в \texttt{uint32\_t} ключ.
+
+Ключом является дата в формате \texttt{DD.MM.YYYY}, которая преобразуется в числовое значение по формуле $year \times 10000 + month \times 100 + day$. Такое представление позволяет корректно сравнивать даты как целые числа. Исходная строка хранится для восстановления вывода, а числовой ключ используется исключительно для сортировки.
+
+Так как заранее неизвестно количество входных строк, необходимо реализовать динамический массив $Vector$. Для него реализуется правило пяти (деструктор, конструктор копирования, оператор копирования, конструктор перемещения, оператор перемещения), а также дополнительные функции: \texttt{PushBack}, \texttt{Size} и вывод в поток.
+
+Далее необходимо реализовать саму поразрядную сортировку \texttt{RadixSort}. Для неё требуется быстрая стабильная сортировка — в данной работе используется сортировка подсчётом по отдельному байту числа \texttt{CountingPass}.
+
+Так как ключ хранится в типе данных \texttt{uint32\_t}, он занимает 4 байта, что соответствует 4 разрядам. Для каждого разряда выделяется дополнительный массив размером 256, так как в одном байте содержится 8 бит, а $2^8 = 256$.
+
+Индекс массива, в который необходимо увеличить значение счётчика, получается побитовым сдвигом ключа на нужное количество бит и побитовой операцией И с маской \texttt{0xFF}, чтобы получить последние 8 бит.
+
+Остальная часть алгоритма представляет собой стандартную реализацию сортировки подсчётом: строится массив частот, затем преобразуется в массив префиксных сумм, после чего элементы расставляются в выходной массив в обратном порядке для обеспечения стабильности.
+
+Также используется двойной буфер для сортировки: вместо выделения нового массива на каждом шаге алгоритма используется заранее выделенный буфер \texttt{buffer}, а результат каждого прохода перемещается обратно в исходный массив.
+
+\pagebreak
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|p{7.5cm}|p{7.5cm}|}
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{main.cpp} \\
+\hline
+\texttt{void CountingPass(Vector<Pair>\& input, Vector<Pair>\& output, int byteIndex)} & Функция одного прохода сортировки подсчётом по заданному байту ключа \\
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{main.cpp} \\
+\hline
+\texttt{void RadixSort(Vector<Pair>\& data)} & Функция поразрядной сортировки \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[language=C++]
+template <typename T>
+class Vector {
+private:
+    T* data;
+    size_t size;
+    size_t capacity;
+
+    void Reallocate(size_t newCapacity);
+
+public:
+    Vector();
+
+    Vector(size_t n, T value = T{});
+
+    Vector(const Vector& other);
+
+    Vector& operator=(const Vector& other);
+
+    Vector(Vector&& other) noexcept;
+
+    Vector& operator=(Vector&& other) noexcept;
+
+    ~Vector();
+
+    size_t Size() const;
+
+    void PushBack(T&& value);
+
+    T& operator[](size_t i);
+
+    const T& operator[](size_t i) const;
+
+    friend std::ostream& operator<<(std::ostream& os, const Vector& v);
+};
+
+struct Pair {
+    std::string raw;
+    uint32_t key;
+
+    Pair();
+
+    explicit Pair(const std::string& line);
+
+    Pair(const Pair& other);
+
+    Pair& operator=(const Pair& other);
+
+    Pair(Pair&& other) noexcept;
+
+    Pair& operator=(Pair&& other) noexcept;
+
+    ~Pair() = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const Pair& p);
+};
+\end{lstlisting}
+
+\pagebreak
+
+\section{Консоль}
+
+\begin{alltt}
+root@host:/workspaces/lab# cmake -B build
+root@host:/workspaces/lab# cmake --build build
+root@host:/workspaces/lab# ./build/lab/lab
+01.01.2000	Alice
+15.06.1995	Bob
+03.03.2010	Charlie
+20.11.1988	Diana
+01.01.2000	Alice
+15.06.1995	Bob
+20.11.1988	Diana
+03.03.2010	Charlie
+\end{alltt}
+
+\pagebreak

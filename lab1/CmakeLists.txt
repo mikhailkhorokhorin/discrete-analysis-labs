@@ -1,10 +1,16 @@
-cmake_minimum_required(VERSION 3.20.0)
-project(lab1 VERSION 0.1.0 LANGUAGES C CXX)
+include_directories(include)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+add_library(lab1_core
+    src/main.cpp
+)
 
-file(GLOB SOURCES "*.cpp")
+add_executable(lab1_main
+    app/main.cpp
+)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(lab1_benchmark
+    benchmark/benchmark.cpp
+)
+
+target_link_libraries(lab1_main PRIVATE lab1_core)
+target_link_libraries(lab1_benchmark PRIVATE lab1_core)
