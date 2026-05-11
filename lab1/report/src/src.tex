@@ -2,103 +2,135 @@
 
 Требуется написать реализацию алгоритма поразрядной сортировки для пар \enquote{дата-значение}.
 
-Основная идея поразрядной сортировки заключается в том, чтобы каждый входной элемент $x$ разбить на разряды и сортировать стабильной сортировкой по каждому разряду.
+Основная идея поразрядной сортировки заключается в том, чтобы каждый входной элемент разбить
+на разряды и применять к каждому разряду устойчивую сортировку подсчётом~--- от младшего
+разряда к старшему. После прохода по всем разрядам массив оказывается полностью
+отсортированным. Сложность алгоритма составляет $O(n \cdot k)$, где $k$~--- количество разрядов,
+а $n$~--- число элементов.
 
 \pagebreak
 
 \section{Исходный код}
 
-На каждой непустой строке входного файла располагается пара \enquote{ключ-значение}, поэтому создадим новую структуру $Pair$, в которой будем хранить исходную строку и преобразованный в \texttt{uint32\_t} ключ.
+\subsection{Вспомогательные структуры}
 
-Ключом является дата в формате \texttt{DD.MM.YYYY}, которая преобразуется в числовое значение по формуле $year \times 10000 + month \times 100 + day$. Такое представление позволяет корректно сравнивать даты как целые числа. Исходная строка хранится для восстановления вывода, а числовой ключ используется исключительно для сортировки.
+Ключом является дата в формате \texttt{DD.MM.YYYY}, которую можно однозначно представить
+как целое число по формуле $year \times 10000 + month \times 100 + day$. Такое кодирование
+сохраняет порядок дат при числовом сравнении.
 
-Так как заранее неизвестно количество входных строк, необходимо реализовать динамический массив $Vector$. Для него реализуется правило пяти (деструктор, конструктор копирования, оператор копирования, конструктор перемещения, оператор перемещения), а также дополнительные функции: \texttt{PushBack}, \texttt{Size} и вывод в поток.
-
-Далее необходимо реализовать саму поразрядную сортировку \texttt{RadixSort}. Для неё требуется быстрая стабильная сортировка — в данной работе используется сортировка подсчётом по отдельному байту числа \texttt{CountingPass}.
-
-Так как ключ хранится в типе данных \texttt{uint32\_t}, он занимает 4 байта, что соответствует 4 разрядам. Для каждого разряда выделяется дополнительный массив размером 256, так как в одном байте содержится 8 бит, а $2^8 = 256$.
-
-Индекс массива, в который необходимо увеличить значение счётчика, получается побитовым сдвигом ключа на нужное количество бит и побитовой операцией И с маской \texttt{0xFF}, чтобы получить последние 8 бит.
-
-Остальная часть алгоритма представляет собой стандартную реализацию сортировки подсчётом: строится массив частот, затем преобразуется в массив префиксных сумм, после чего элементы расставляются в выходной массив в обратном порядке для обеспечения стабильности.
-
-Также используется двойной буфер для сортировки: вместо выделения нового массива на каждом шаге алгоритма используется заранее выделенный буфер \texttt{buffer}, а результат каждого прохода перемещается обратно в исходный массив.
-
-\pagebreak
+Так как количество входных строк заранее неизвестно, реализован динамический массив
+\texttt{TVector<T>} с удвоением ёмкости при переполнении. Для него реализовано
+правило пяти: деструктор, конструктор копирования, оператор присваивания копированием,
+конструктор перемещения и оператор присваивания перемещением.
 
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|p{7.5cm}|p{7.5cm}|}
 \hline
 \rowcolor{lightgray}
-\multicolumn{2}{|c|}{main.cpp} \\
+\multicolumn{2}{|c|}{include/vector.hpp} \\
 \hline
-\texttt{void CountingPass(Vector<Pair>\& input, Vector<Pair>\& output, int byteIndex)} & Функция одного прохода сортировки подсчётом по заданному байту ключа \\
+\texttt{template <typename T> class TVector} & Динамический массив с правилом пяти; методы \texttt{PushBack}, \texttt{Size}, \texttt{operator[]} \\
 \hline
 \rowcolor{lightgray}
-\multicolumn{2}{|c|}{main.cpp} \\
+\multicolumn{2}{|c|}{include/pair.hpp} \\
 \hline
-\texttt{void RadixSort(Vector<Pair>\& data)} & Функция поразрядной сортировки \\
+\texttt{struct TPair} & Пара \enquote{ключ-значение}: хранит исходную строку и числовой ключ \texttt{uint32\_t} \\
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{src/main.cpp} \\
+\hline
+\texttt{void CountingPass(TVector<TPair>\&, TVector<TPair>\&, int)} & Один проход сортировки подсчётом по заданному байту ключа \\
+\hline
+\texttt{void RadixSort(TVector<TPair>\&)} & Поразрядная сортировка: четыре прохода по байтам \texttt{uint32\_t} \\
 \hline
 \end{tabular}
 \end{table}
 
-\begin{lstlisting}[language=C++]
-template <typename T>
-class Vector {
-private:
-    T* data;
-    size_t size;
-    size_t capacity;
-
-    void Reallocate(size_t newCapacity);
-
-public:
-    Vector();
-
-    Vector(size_t n, T value = T{});
-
-    Vector(const Vector& other);
-
-    Vector& operator=(const Vector& other);
-
-    Vector(Vector&& other) noexcept;
-
-    Vector& operator=(Vector&& other) noexcept;
-
-    ~Vector();
-
-    size_t Size() const;
-
-    void PushBack(T&& value);
-
-    T& operator[](size_t i);
-
-    const T& operator[](size_t i) const;
-
-    friend std::ostream& operator<<(std::ostream& os, const Vector& v);
-};
-
-struct Pair {
+\begin{lstlisting}[language=C++, caption={Структура TPair и объявление TVector}]
+struct TPair {
     std::string raw;
     uint32_t key;
 
-    Pair();
-
-    explicit Pair(const std::string& line);
-
-    Pair(const Pair& other);
-
-    Pair& operator=(const Pair& other);
-
-    Pair(Pair&& other) noexcept;
-
-    Pair& operator=(Pair&& other) noexcept;
-
-    ~Pair() = default;
-
-    friend std::ostream& operator<<(std::ostream& os, const Pair& p);
+    explicit TPair(const std::string &line);
+    TPair(const TPair &other);
+    TPair &operator=(const TPair &other);
+    TPair(TPair &&other) noexcept;
+    TPair &operator=(TPair &&other) noexcept;
 };
+
+template <typename T>
+class TVector {
+  public:
+    TVector();
+    explicit TVector(size_t n);
+    TVector(const TVector &other);
+    TVector &operator=(const TVector &other);
+    TVector(TVector &&other) noexcept;
+    TVector &operator=(TVector &&other) noexcept;
+    ~TVector();
+    size_t Size() const;
+    void PushBack(T &&value);
+    T &operator[](size_t i);
+    const T &operator[](size_t i) const;
+  private:
+    T *data;
+    size_t size;
+    size_t capacity;
+    void Reallocate(size_t newCapacity);
+};
+\end{lstlisting}
+
+\subsection{Сортировка подсчётом по одному байту}
+
+Функция \texttt{CountingPass} выполняет один стабильный проход по заданному байту ключа.
+Сначала строится массив частот (256 элементов~--- по числу возможных значений байта),
+затем он преобразуется в массив префиксных сумм. Элементы расставляются в выходной
+массив в обратном порядке~--- это обеспечивает устойчивость.
+
+\begin{lstlisting}[language=C++, caption={CountingPass — один проход сортировки подсчётом}]
+void CountingPass(TVector<TPair> &input, TVector<TPair> &output,
+                  int byteIndex) {
+    int count[BYTE_BASE];
+    for (int i = 0; i < BYTE_BASE; ++i) {
+        count[i] = 0;
+    }
+    for (size_t i = 0; i < input.Size(); ++i) {
+        uint8_t byteVal = static_cast<uint8_t>(
+            (input[i].key >> (byteIndex * 8)) & BYTE_MASK);
+        count[byteVal]++;
+    }
+    for (int i = 1; i < BYTE_BASE; ++i) {
+        count[i] += count[i - 1];
+    }
+    for (int i = static_cast<int>(input.Size()) - 1; i >= 0; --i) {
+        uint8_t byteVal = static_cast<uint8_t>(
+            (input[i].key >> (byteIndex * 8)) & BYTE_MASK);
+        int pos = --count[byteVal];
+        output[pos] = std::move(input[i]);
+    }
+}
+\end{lstlisting}
+
+\subsection{Поразрядная сортировка}
+
+Функция \texttt{RadixSort} применяет \texttt{CountingPass} последовательно к байтам 0, 1, 2, 3
+(от младшего к старшему). Для экономии аллокаций используется заранее выделенный буфер
+\texttt{buffer}: результат каждого прохода перемещается обратно в исходный массив.
+
+\begin{lstlisting}[language=C++, caption={RadixSort — четыре прохода по байтам uint32\_t}]
+void RadixSort(TVector<TPair> &data) {
+    if (data.Size() < 2) {
+        return;
+    }
+    TVector<TPair> buffer(data.Size());
+    for (int byte = 0; byte < UINT32_BYTES; ++byte) {
+        CountingPass(data, buffer, byte);
+        for (size_t i = 0; i < data.Size(); ++i) {
+            data[i] = std::move(buffer[i]);
+        }
+    }
+}
 \end{lstlisting}
 
 \pagebreak
@@ -106,17 +138,18 @@ struct Pair {
 \section{Консоль}
 
 \begin{alltt}
-root@host:/workspaces/lab# cmake -B build
-root@host:/workspaces/lab# cmake --build build
-root@host:/workspaces/lab# ./build/lab/lab
-01.01.2000	Alice
-15.06.1995	Bob
-03.03.2010	Charlie
-20.11.1988	Diana
-01.01.2000	Alice
-15.06.1995	Bob
-20.11.1988	Diana
-03.03.2010	Charlie
+# cmake -B build -DCMAKE_BUILD_TYPE=Release
+# cmake --build build
+# ./build/lab1/lab1_main
+01.01.2000    Alice
+15.06.1995    Bob
+03.03.2010    Charlie
+20.11.1988    Diana
+^D
+20.11.1988    Diana
+15.06.1995    Bob
+01.01.2000    Alice
+03.03.2010    Charlie
 \end{alltt}
 
 \pagebreak

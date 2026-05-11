@@ -1,0 +1,132 @@
+\section{Описание}
+
+Требуется найти все наибольшие общие подстроки двух строк. Для этого строится обобщённое
+суффиксное дерево для строки $S_1 \# S_2 \$$, где вместо обычных символов-разделителей
+в реализации используются специальные коды 256 и 257. Поэтому служебные разделители
+не могут совпасть с символами входных строк.
+
+Суффиксное дерево строится онлайн-алгоритмом Укконена за линейное время. После построения
+выполняется обход дерева в глубину. Для каждой вершины определяется, есть ли в её поддереве
+суффиксы первой строки и суффиксы второй строки. Если оба типа суффиксов присутствуют,
+то строка, соответствующая пути от корня до этой вершины, является общей подстрокой.
+Самая глубокая такая вершина задаёт длину наибольшей общей подстроки.
+
+\pagebreak
+
+\section{Исходный код}
+
+\subsection{Структура дерева}
+
+Каждая вершина хранит переходы по символам, суффиксную ссылку и границы ребра в общей
+строке. Для листьев правый конец ребра равен специальному значению \texttt{LEAF\_END};
+фактический конец листового ребра задаётся текущей глобальной переменной \texttt{leafEnd}.
+
+\begin{lstlisting}[language=C++, caption={Вершина суффиксного дерева}]
+struct TNode {
+    std::map<int, int> children;
+    int suffixLink;
+    int start;
+    int end;
+
+    TNode(int start, int end);
+};
+\end{lstlisting}
+
+Алфавит дерева целочисленный. Обычные байты входных строк попадают в диапазон
+$[0,255]$, а разделители имеют значения 256 и 257.
+
+\begin{lstlisting}[language=C++, caption={Построение общей строки}]
+std::vector<int> BuildCombinedText(
+    const std::string &first,
+    const std::string &second
+) {
+    std::vector<int> result;
+    for (unsigned char ch : first) {
+        result.push_back(static_cast<int>(ch));
+    }
+    result.push_back(FIRST_SEPARATOR);
+    for (unsigned char ch : second) {
+        result.push_back(static_cast<int>(ch));
+    }
+    result.push_back(SECOND_SEPARATOR);
+    return result;
+}
+\end{lstlisting}
+
+\subsection{Алгоритм Укконена}
+
+При добавлении очередного символа поддерживаются активная вершина \texttt{activeNode},
+активное ребро \texttt{activeEdge}, активная длина \texttt{activeLength} и число
+оставшихся суффиксов \texttt{remaining}. Если нужного перехода нет, создаётся лист.
+Если переход есть, но следующий символ на ребре отличается, ребро расщепляется и
+создаётся внутренняя вершина. Суффиксные ссылки позволяют не начинать обработку каждого
+суффикса заново.
+
+\begin{lstlisting}[language=C++, caption={Основной фрагмент Extend}]
+if (next == NO_CHILD) {
+    SetChild(activeNode, edgeCh, NewNode(pos, LEAF_END));
+} else {
+    int edgeLength = EdgeLen(next);
+    if (activeLength >= edgeLength) {
+        activeEdge += edgeLength;
+        activeLength -= edgeLength;
+        activeNode = next;
+        continue;
+    }
+
+    int splitCh = text[nodes[next].start + activeLength];
+    int curCh = text[pos];
+    if (splitCh == curCh) {
+        ++activeLength;
+        break;
+    }
+
+    int split = NewNode(
+        nodes[next].start,
+        nodes[next].start + activeLength - 1
+    );
+    SetChild(activeNode, edgeCh, split);
+    SetChild(split, curCh, NewNode(pos, LEAF_END));
+    nodes[next].start += activeLength;
+    SetChild(split, splitCh, next);
+}
+\end{lstlisting}
+
+\subsection{Поиск ответа}
+
+Функция \texttt{Dfs} возвращает маску покрытия поддерева: есть ли в нём суффиксы первой
+строки, второй строки или обеих строк. Для восстановления самой подстроки дополнительно
+передаётся позиция одного суффикса из первой строки. Если вершина покрыта обеими строками,
+её глубина сравнивается с текущим максимумом, а соответствующая строка добавляется
+в \texttt{std::set}. Множество автоматически удаляет повторы и сортирует ответы
+лексикографически.
+
+\begin{lstlisting}[language=C++, caption={Обработка общей подстроки в DFS}]
+if (coverage == COV_BOTH && idx != ROOT && depth > 0
+    && firstStart != NO_CHILD && firstStart + depth <= sep) {
+    if (depth > bestLen) {
+        bestLen = depth;
+        results.clear();
+    }
+    if (depth == bestLen) {
+        results.insert(MakeString(firstStart, depth));
+    }
+}
+\end{lstlisting}
+
+\pagebreak
+
+\section{Консоль}
+
+\begin{alltt}
+# cmake -B build -DCMAKE_BUILD_TYPE=Release
+# cmake --build build
+# ./build/lab5/lab5_main
+xabay
+xabcbay
+3
+bay
+xab
+\end{alltt}
+
+\pagebreak

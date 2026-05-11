@@ -1,0 +1,391 @@
+#include <cstdint>
+#include <cctype>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+
+const uint16_t MAX_KEY_LENGTH = 256;
+
+static int ExtractBit(const std::string &key, int pos) {
+    int byteIdx = (pos - 1) / 8;
+    int bitOff = 7 - ((pos - 1) % 8);
+    if (byteIdx >= static_cast<int>(key.size())) {
+        return 0;
+    }
+    return (static_cast<unsigned char>(key[byteIdx]) >> bitOff) & 1;
+}
+
+static std::string NormalizeKey(const std::string &s) {
+    std::string result(s.size(), '\0');
+    for (int i = 0; i < static_cast<int>(s.size()); i++) {
+        result[i] = static_cast<char>(tolower(static_cast<unsigned char>(s[i])));
+    }
+    return result;
+}
+
+static int FindFirstDiffBit(const std::string &a, const std::string &b) {
+    int maxLen = static_cast<int>(a.size() > b.size() ? a.size() : b.size());
+    for (int i = 0; i < maxLen; i++) {
+        unsigned char x = (i < static_cast<int>(a.size())) ? static_cast<unsigned char>(a[i]) : 0;
+        unsigned char y = (i < static_cast<int>(b.size())) ? static_cast<unsigned char>(b[i]) : 0;
+        if (x != y) {
+            unsigned char diff = x ^ y;
+            int shift = 0;
+            while ((diff & 0x80) == 0) {
+                diff <<= 1;
+                shift++;
+            }
+            return i * 8 + shift + 1;
+        }
+    }
+    return maxLen * 8 + 1;
+}
+
+struct TNode {
+    std::string key;
+    uint64_t value;
+    int checkBit;
+    TNode *left;
+    TNode *right;
+
+    TNode(const std::string &k, uint64_t v, int b)
+        : key(k), value(v), checkBit(b), left(nullptr), right(nullptr) {
+    }
+};
+
+class TPatriciaTrie {
+  public:
+    TPatriciaTrie();
+    ~TPatriciaTrie();
+
+    bool Find(const std::string &key, uint64_t &value) const;
+    bool Insert(const std::string &key, uint64_t value);
+    bool Remove(const std::string &key);
+    bool Save(const std::string &path) const;
+    bool Load(const std::string &path);
+
+  private:
+    TNode *header;
+    int size;
+
+    TNode *SearchNode(const std::string &key) const;
+    TNode **FindParentPtr(TNode *target, const std::string &key) const;
+    void SaveSubtree(std::ofstream &file, TNode *cur) const;
+    void DestroySubtree(TNode *cur);
+};
+
+TPatriciaTrie::TPatriciaTrie() : header(nullptr), size(0) {
+}
+
+TNode *TPatriciaTrie::SearchNode(const std::string &key) const {
+    TNode *prev = header;
+    TNode *cur = header->left;
+    while (cur->checkBit > prev->checkBit) {
+        prev = cur;
+        if (ExtractBit(key, cur->checkBit)) {
+            cur = cur->right;
+        } else {
+            cur = cur->left;
+        }
+    }
+    return cur;
+}
+
+bool TPatriciaTrie::Find(const std::string &key, uint64_t &value) const {
+    if (!header) {
+        return false;
+    }
+    TNode *found = SearchNode(key);
+    if (found->key != key) {
+        return false;
+    }
+    value = found->value;
+    return true;
+}
+
+bool TPatriciaTrie::Insert(const std::string &key, uint64_t value) {
+    if (!header) {
+        header = new TNode(key, value, 0);
+        header->left = header;
+        header->right = nullptr;
+        size++;
+        return true;
+    }
+
+    TNode *existing = SearchNode(key);
+    if (existing->key == key) {
+        return false;
+    }
+
+    int diffBit = FindFirstDiffBit(key, existing->key);
+
+    TNode *prev = header;
+    TNode *cur = header->left;
+    while (cur->checkBit > prev->checkBit && cur->checkBit < diffBit) {
+        prev = cur;
+        if (ExtractBit(key, cur->checkBit)) {
+            cur = cur->right;
+        } else {
+            cur = cur->left;
+        }
+    }
+
+    TNode *newNode = new TNode(key, value, diffBit);
+    if (ExtractBit(key, diffBit)) {
+        newNode->right = newNode;
+        newNode->left = cur;
+    } else {
+        newNode->left = newNode;
+        newNode->right = cur;
+    }
+
+    if (prev == header) {
+        header->left = newNode;
+    } else if (ExtractBit(key, prev->checkBit)) {
+        prev->right = newNode;
+    } else {
+        prev->left = newNode;
+    }
+
+    size++;
+    return true;
+}
+
+TNode **TPatriciaTrie::FindParentPtr(TNode *target, const std::string &key) const {
+    TNode **ptr = &header->left;
+    TNode *par = header;
+    TNode *cur = header->left;
+    while (cur->checkBit > par->checkBit) {
+        if (cur == target) {
+            return ptr;
+        }
+        par = cur;
+        if (ExtractBit(key, cur->checkBit)) {
+            ptr = &cur->right;
+            cur = cur->right;
+        } else {
+            ptr = &cur->left;
+            cur = cur->left;
+        }
+    }
+    return ptr;
+}
+
+bool TPatriciaTrie::Remove(const std::string &key) {
+    if (!header) {
+        return false;
+    }
+
+    TNode *target = SearchNode(key);
+    if (target->key != key) {
+        return false;
+    }
+
+    bool selfRef = (target->left == target || target->right == target);
+    if (selfRef) {
+        if (target == header) {
+            delete header;
+            header = nullptr;
+            size--;
+            return true;
+        }
+        TNode *other = (target->left == target) ? target->right : target->left;
+        *FindParentPtr(target, key) = other;
+        delete target;
+        size--;
+        return true;
+    }
+
+    TNode *grandPrev = header;
+    TNode *prev = header;
+    TNode *cur = header->left;
+    while (cur->checkBit > prev->checkBit) {
+        grandPrev = prev;
+        prev = cur;
+        if (ExtractBit(key, cur->checkBit)) {
+            cur = cur->right;
+        } else {
+            cur = cur->left;
+        }
+    }
+    TNode *backEdgeHolder = prev;
+
+    std::string holderKey = backEdgeHolder->key;
+    uint64_t holderVal = backEdgeHolder->value;
+
+    TNode *holderChild;
+    if (backEdgeHolder->left == backEdgeHolder || backEdgeHolder->right == backEdgeHolder) {
+        holderChild =
+            (backEdgeHolder->left == target) ? backEdgeHolder->left : backEdgeHolder->right;
+    } else {
+        holderChild =
+            (backEdgeHolder->left == target) ? backEdgeHolder->right : backEdgeHolder->left;
+    }
+
+    TNode *rPrev = header;
+    TNode *rCur = header->left;
+    while (rCur->checkBit > rPrev->checkBit) {
+        rPrev = rCur;
+        if (ExtractBit(holderKey, rCur->checkBit)) {
+            rCur = rCur->right;
+        } else {
+            rCur = rCur->left;
+        }
+    }
+    TNode *backEdgeSource = rPrev;
+
+    target->key = holderKey;
+    target->value = holderVal;
+
+    if (backEdgeSource->left == backEdgeHolder) {
+        backEdgeSource->left = target;
+    }
+    if (backEdgeSource->right == backEdgeHolder) {
+        backEdgeSource->right = target;
+    }
+
+    if (target->left == backEdgeHolder) {
+        target->left = holderChild;
+    }
+    if (target->right == backEdgeHolder) {
+        target->right = holderChild;
+    }
+
+    if (grandPrev->left == backEdgeHolder) {
+        grandPrev->left = holderChild;
+    } else if (grandPrev->right == backEdgeHolder) {
+        grandPrev->right = holderChild;
+    }
+
+    delete backEdgeHolder;
+    size--;
+    return true;
+}
+
+void TPatriciaTrie::SaveSubtree(std::ofstream &file, TNode *cur) const {
+    uint16_t klen = static_cast<uint16_t>(cur->key.size());
+    file.write(reinterpret_cast<const char *>(&klen), sizeof(klen));
+    file.write(cur->key.data(), klen);
+    file.write(reinterpret_cast<const char *>(&cur->value), sizeof(cur->value));
+    if (cur->left && cur->left->checkBit > cur->checkBit) {
+        SaveSubtree(file, cur->left);
+    }
+    if (cur->right && cur->right->checkBit > cur->checkBit) {
+        SaveSubtree(file, cur->right);
+    }
+}
+
+void TPatriciaTrie::DestroySubtree(TNode *cur) {
+    if (cur->left && cur->left->checkBit > cur->checkBit) {
+        DestroySubtree(cur->left);
+    }
+    if (cur->right && cur->right->checkBit > cur->checkBit) {
+        DestroySubtree(cur->right);
+    }
+    delete cur;
+}
+
+TPatriciaTrie::~TPatriciaTrie() {
+    if (header) {
+        DestroySubtree(header);
+    }
+    header = nullptr;
+}
+
+bool TPatriciaTrie::Save(const std::string &path) const {
+    std::ofstream file(path, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    if (header) {
+        SaveSubtree(file, header);
+    }
+    return true;
+}
+
+bool TPatriciaTrie::Load(const std::string &path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+
+    TPatriciaTrie tmp;
+    while (true) {
+        uint16_t klen = 0;
+        if (!file.read(reinterpret_cast<char *>(&klen), sizeof(klen))) {
+            if (!file.eof()) {
+                return false;
+            }
+            break;
+        }
+        if (klen == 0 || klen > MAX_KEY_LENGTH) {
+            return false;
+        }
+        std::string key(klen, '\0');
+        if (!file.read(&key[0], klen)) {
+            return false;
+        }
+        uint64_t val = 0;
+        if (!file.read(reinterpret_cast<char *>(&val), sizeof(val))) {
+            return false;
+        }
+        if (!tmp.Insert(key, val)) {
+            return false;
+        }
+    }
+
+    std::swap(header, tmp.header);
+    std::swap(size, tmp.size);
+    return true;
+}
+
+int main() {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
+    TPatriciaTrie trie;
+    std::string line;
+
+    while (std::getline(std::cin, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        std::istringstream ss(line);
+        std::string cmd;
+        ss >> cmd;
+
+        if (cmd == "+") {
+            std::string word;
+            uint64_t val;
+            ss >> word >> val;
+            std::cout << (trie.Insert(NormalizeKey(word), val) ? "OK" : "Exist") << "\n";
+
+        } else if (cmd == "-") {
+            std::string word;
+            ss >> word;
+            std::cout << (trie.Remove(NormalizeKey(word)) ? "OK" : "NoSuchWord") << "\n";
+
+        } else if (cmd == "!") {
+            std::string subcmd, path;
+            ss >> subcmd >> path;
+            if (subcmd == "Save") {
+                std::cout << (trie.Save(path) ? "OK" : "ERROR: cannot save") << "\n";
+            } else if (subcmd == "Load") {
+                std::cout << (trie.Load(path) ? "OK" : "ERROR: cannot load") << "\n";
+            }
+
+        } else {
+            uint64_t val;
+            if (trie.Find(NormalizeKey(cmd), val)) {
+                std::cout << "OK: " << val << "\n";
+            } else {
+                std::cout << "NoSuchWord\n";
+            }
+        }
+    }
+
+    return 0;
+}

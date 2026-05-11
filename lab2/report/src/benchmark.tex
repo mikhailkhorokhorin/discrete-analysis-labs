@@ -1,0 +1,84 @@
+\section{Тест производительности}
+
+\subsection{Методика}
+
+Для каждого размера $N$ генерируется набор уникальных ключей из строчных букв латинского
+алфавита случайной длины от 1 до 16 символов. Измеряются три операции отдельно:
+вставка $N$ ключей, поиск всех $N$ ключей, удаление всех $N$ ключей. Сравнение
+проводится с \texttt{std::map}~--- сбалансированным деревом поиска из STL с
+гарантированной сложностью $O(\log n)$ на все операции.
+
+Время каждой операции замеряется с помощью \texttt{std::chrono::high\_resolution\_clock}.
+Генерация данных и ввод-вывод в замер не входят.
+
+\subsection{Результаты}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|r|r|r|r|r|r|r|}
+\hline
+\rowcolor{lightgray}
+& \multicolumn{3}{c|}{PATRICIA, мкс} & \multicolumn{3}{c|}{\texttt{std::map}, мкс} \\
+\hline
+\rowcolor{lightgray}
+$N$ & Insert & Find & Remove & Insert & Find & Remove \\
+\hline
+1\,000    & 348    & 208    & 465    & 214    & 161    & 303    \\
+\hline
+10\,000   & 4\,731 & 3\,246 & 8\,264 & 4\,251 & 2\,405 & 3\,711 \\
+\hline
+100\,000  & 86\,469 & 75\,838 & 100\,506 & 87\,293 & 73\,691 & 81\,991 \\
+\hline
+500\,000  & 731\,836 & 695\,895 & 764\,450 & 766\,442 & 748\,168 & 785\,446 \\
+\hline
+1\,000\,000 & 1\,842\,835 & 2\,022\,130 & 2\,038\,648 & 1\,953\,836 & 1\,985\,049 & 2\,322\,171 \\
+\hline
+\end{tabular}
+\caption{Время операций в микросекундах (замер в Docker, gcc 14, -O2)}
+\end{table}
+
+\begin{alltt}
+# python3 lab2/benchmark/generator.py 1000
+# ./build/lab2/lab2_benchmark < tests.txt
+N=1000
+PATRICIA  Insert=348us Find=208us Remove=465us
+std::map  Insert=214us Find=161us Remove=303us
+# python3 lab2/benchmark/generator.py 10000
+# ./build/lab2/lab2_benchmark < tests.txt
+N=10000
+PATRICIA  Insert=4731us Find=3246us Remove=8264us
+std::map  Insert=4251us Find=2405us Remove=3711us
+# python3 lab2/benchmark/generator.py 100000
+# ./build/lab2/lab2_benchmark < tests.txt
+N=100000
+PATRICIA  Insert=86469us Find=75838us Remove=100506us
+std::map  Insert=87293us Find=73691us Remove=81991us
+# python3 lab2/benchmark/generator.py 500000
+# ./build/lab2/lab2_benchmark < tests.txt
+N=500000
+PATRICIA  Insert=731836us Find=695895us Remove=764450us
+std::map  Insert=766442us Find=748168us Remove=785446us
+# python3 lab2/benchmark/generator.py 1000000
+# ./build/lab2/lab2_benchmark < tests.txt
+N=1000000
+PATRICIA  Insert=1842835us Find=2022130us Remove=2038648us
+std::map  Insert=1953836us Find=1985049us Remove=2322171us
+\end{alltt}
+
+\subsection{Анализ результатов}
+
+На малых объёмах ($N \leq 10\,000$) \texttt{std::map} обычно быстрее: стандартная
+реализация хорошо оптимизирована, а накладные расходы PATRICIA на выделение узлов,
+побитовые проверки и хранение строк ещё не окупаются.
+
+На среднем размере ($N = 100\,000$) результаты близки: вставка и поиск отличаются
+незначительно, удаление у PATRICIA остаётся дороже из-за более сложного восстановления
+ссылок после удаления узла.
+
+На больших размерах ($N \geq 500\,000$) PATRICIA начинает выигрывать на части операций:
+при $N = 500\,000$ поиск и удаление быстрее \texttt{std::map}, а при $N = 10^6$
+PATRICIA быстрее по вставке и удалению. Это соответствует идее сжатого trie: путь
+задаётся критическими битами ключей, а не полным лексикографическим сравнением строк
+на каждом уровне сбалансированного дерева.
+
+\pagebreak

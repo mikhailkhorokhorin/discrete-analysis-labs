@@ -7,18 +7,20 @@ int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    Vector<Pair> data;
+    TVector<TPair> data;
     std::string line;
 
     while (std::getline(std::cin, line)) {
         if (!line.empty()) {
-            data.PushBack(Pair(line));
+            data.PushBack(TPair(line));
         }
     }
 
     RadixSort(data);
 
-    std::cout << data;
+    for (size_t i = 0; i < data.Size(); ++i) {
+        std::cout << data[i].raw << "\n";
+    }
 
     return 0;
 }

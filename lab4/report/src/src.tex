@@ -1,0 +1,97 @@
+\section{Описание}
+
+Требуется реализовать алгоритм Кнута"---Морриса"---Пратта для поиска одного образца
+в тексте над алфавитом чисел от~0 до~$2^{32}-1$.
+
+Алгоритм КМП работает за $O(|P| + |T|)$, где $|P|$~--- длина образца, а $|T|$~---
+длина текста. Сначала для образца строится префикс-функция $\pi$: значение
+$\pi[i]$ равно длине наибольшего собственного префикса $P[0..i]$, который одновременно
+является суффиксом этой последовательности. Затем текст просматривается слева направо.
+При несовпадении алгоритм не возвращается назад по тексту, а использует $\pi$ для
+выбора следующей длины уже совпавшего префикса.
+
+Числа считываются в тип \texttt{uint32\_t}. Стандартное числовое считывание корректно
+обрабатывает ведущие нули: \texttt{0011} и \texttt{11} становятся одним и тем же
+значением~11.
+
+\pagebreak
+
+\section{Исходный код}
+
+\subsection{Префикс-функция}
+
+Функция \texttt{BuildPrefixFunction} строит массив $\pi$ для образца. Переменная
+\texttt{k} хранит текущую длину совпавшего префикса. Пока следующий символ не подходит,
+значение \texttt{k} откатывается по уже посчитанным значениям префикс-функции.
+
+\begin{lstlisting}[language=C++, caption={Построение префикс-функции}]
+std::vector<int> BuildPrefixFunction(const std::vector<TToken> &pattern) {
+    int patternLen = static_cast<int>(pattern.size());
+    std::vector<int> prefixFunc(patternLen, 0);
+
+    for (int i = 1; i < patternLen; ++i) {
+        int k = prefixFunc[i - 1];
+        while (k > 0 && pattern[i] != pattern[k]) {
+            k = prefixFunc[k - 1];
+        }
+        if (pattern[i] == pattern[k]) {
+            ++k;
+        }
+        prefixFunc[i] = k;
+    }
+
+    return prefixFunc;
+}
+\end{lstlisting}
+
+\subsection{Поиск}
+
+В основном решении текст обрабатывается потоково, построчно и пословно. Это важно,
+поскольку в условии нет ограничений на длину текста, а лимит памяти составляет 64 MB.
+Для вывода позиции найденного вхождения хранится только очередь последних $|P|$
+позиций \texttt{positionWindow}. Сам алгоритм остаётся классическим КМП: переменная
+\texttt{matched} хранит длину совпавшего префикса образца.
+
+\begin{lstlisting}[language=C++, caption={Потоковый проход КМП в main}]
+while (ss >> token) {
+    positionWindow.emplace_back(lineNumber, wordNumber);
+    if (static_cast<int>(positionWindow.size()) > patternLen) {
+        positionWindow.pop_front();
+    }
+
+    while (matched > 0 && token != pattern[matched]) {
+        matched = prefixFunc[matched - 1];
+    }
+    if (token == pattern[matched]) {
+        ++matched;
+    }
+    if (matched == patternLen) {
+        const TPosition &match = positionWindow.front();
+        std::cout << match.first << ", " << match.second << "\n";
+        matched = prefixFunc[matched - 1];
+    }
+
+    ++wordNumber;
+}
+\end{lstlisting}
+
+Для теста производительности также реализована функция \texttt{KmpSearch}, принимающая
+готовые векторы текста и позиций. Она использует тот же цикл КМП и нужна только для
+удобного сравнения с наивным алгоритмом в бенчмарке.
+
+\pagebreak
+
+\section{Консоль}
+
+\begin{alltt}
+# cmake -B build -DCMAKE_BUILD_TYPE=Release
+# cmake --build build
+# ./build/lab4/lab4_main
+11 45 11 45 90
+0011 45 011 0045 11 45 90    11
+45 11 45 90
+1, 3
+1, 8
+\end{alltt}
+
+\pagebreak

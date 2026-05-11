@@ -1,19 +1,18 @@
 #pragma once
 
 #include <cstdint>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
-struct Pair {
+struct TPair {
     std::string raw;
     uint32_t key;
 
-    Pair() : raw(), key(0) {
+    TPair() : raw(), key(0) {
     }
 
-    explicit Pair(const std::string &line) : raw(line), key(0) {
+    explicit TPair(const std::string &line) : raw(line), key(0) {
         size_t dot1 = raw.find('.');
         size_t dot2 = raw.find('.', dot1 + 1);
         size_t tab = raw.find('\t');
@@ -30,14 +29,15 @@ struct Pair {
             throw std::invalid_argument("Invalid date");
         }
 
-        key = static_cast<uint32_t>(year) * 10000 + static_cast<uint32_t>(month) * 100
-              + static_cast<uint32_t>(day);
+        key = static_cast<uint32_t>(year) * 10000
+            + static_cast<uint32_t>(month) * 100
+            + static_cast<uint32_t>(day);
     }
 
-    Pair(const Pair &other) : raw(other.raw), key(other.key) {
+    TPair(const TPair &other) : raw(other.raw), key(other.key) {
     }
 
-    Pair &operator=(const Pair &other) {
+    TPair &operator=(const TPair &other) {
         if (this != &other) {
             raw = other.raw;
             key = other.key;
@@ -45,21 +45,14 @@ struct Pair {
         return *this;
     }
 
-    Pair(Pair &&other) noexcept : raw(std::move(other.raw)), key(other.key) {
+    TPair(TPair &&other) noexcept : raw(std::move(other.raw)), key(other.key) {
     }
 
-    Pair &operator=(Pair &&other) noexcept {
+    TPair &operator=(TPair &&other) noexcept {
         if (this != &other) {
             raw = std::move(other.raw);
             key = other.key;
         }
         return *this;
-    }
-
-    ~Pair() = default;
-
-    friend std::ostream &operator<<(std::ostream &os, const Pair &p) {
-        os << p.raw;
-        return os;
     }
 };

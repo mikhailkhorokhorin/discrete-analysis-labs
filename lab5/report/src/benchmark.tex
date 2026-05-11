@@ -1,0 +1,86 @@
+\section{Тест производительности}
+
+\subsection{Методика}
+
+Тест сравнивает построение обобщённого суффиксного дерева и поиск ответа с классическим
+динамическим программированием для задачи наибольшей общей подстроки. DP хранит таблицу
+размера $(|S_1|+1)(|S_2|+1)$ и работает за $O(|S_1|\cdot|S_2|)$ по времени и памяти.
+Суффиксное дерево строится за $O(|S_1|+|S_2|)$, после чего выполняется один DFS.
+
+На малых размерах бенчмарк сравнивает полные множества ответов двух алгоритмов. На больших
+размерах DP пропускается, поскольку таблица становится слишком большой.
+
+\subsection{Результаты}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|r|r|r|r|}
+\hline
+\rowcolor{lightgray}
+$|S_1|=|S_2|$ & Суффиксное дерево, мкс & DP, мкс & Проверка \\
+\hline
+1\,000 & 996 & 4\,847 & yes \\
+\hline
+2\,000 & 1\,329 & 24\,298 & yes \\
+\hline
+4\,000 & 3\,482 & 106\,665 & yes \\
+\hline
+\end{tabular}
+\caption{Сравнение с динамическим программированием, алфавит из 4 букв}
+\end{table}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|r|r|r|}
+\hline
+\rowcolor{lightgray}
+$|S_1|=|S_2|$ & Суффиксное дерево, мкс & Длина ответа \\
+\hline
+10\,000 & 12\,783 & 12 \\
+\hline
+50\,000 & 208\,406 & 15 \\
+\hline
+100\,000 & 339\,247 & 17 \\
+\hline
+\end{tabular}
+\caption{Большие тесты, DP пропущен}
+\end{table}
+
+\begin{alltt}
+# python3 lab5/benchmark/generator.py 1000 1000 4 42
+# ./build/lab5/lab5_benchmark < tests.txt
+Suffix tree LCS time: 996us
+LCS length: 10
+LCS count: 1
+DP LCS time: 4847us
+DP LCS length: 10
+DP LCS count: 1
+Results equal: yes
+
+# python3 lab5/benchmark/generator.py 4000 4000 4 42
+# ./build/lab5/lab5_benchmark < tests.txt
+Suffix tree LCS time: 3482us
+LCS length: 12
+LCS count: 1
+DP LCS time: 106665us
+DP LCS length: 12
+DP LCS count: 1
+Results equal: yes
+
+# python3 lab5/benchmark/generator.py 100000 100000 4 42
+# ./build/lab5/lab5_benchmark < tests.txt
+Suffix tree LCS time: 339247us
+LCS length: 17
+LCS count: 1
+DP LCS skipped: input is too large
+\end{alltt}
+
+\subsection{Анализ результатов}
+
+На малых тестах суффиксное дерево уже быстрее DP: при длине строк 4\,000 выигрыш
+составляет примерно \textbf{30 раз}. При дальнейшем росте размера DP становится
+непрактичным из-за квадратичной таблицы, тогда как суффиксное дерево продолжает
+работать в пределах ограничений. Бенчмарк также проверяет корректность: для малых
+тестов множества найденных подстрок у дерева и DP совпадают.
+
+\pagebreak

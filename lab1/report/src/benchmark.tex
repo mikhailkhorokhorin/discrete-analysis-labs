@@ -1,37 +1,71 @@
 \section{Тест производительности}
-Тест производительности представляет из себя следующее: создаётся 2 одинаковых
-массива, один сортируется с помощью алгоритма, который мы реализовали, а другой~---
-с помощью стандартной функции \texttt{std::stable\_sort}. Время выполнения обоих
-алгоритмов замеряется и сравнивается.
+
+\subsection{Методика}
+
+Для сравнения создаются два одинаковых массива из случайно сгенерированных дат.
+Один сортируется реализованным алгоритмом \texttt{RadixSort}, второй~---
+стандартной функцией \texttt{std::stable\_sort} из STL. Время каждого алгоритма
+измеряется отдельно с помощью \texttt{std::chrono::high\_resolution\_clock}.
+Генерация данных и ввод-вывод в замер не входят.
+
+Тест запускается на пяти размерах от $100$ до $10^6$ элементов.
+
+\subsection{Результаты}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|r|r|r|}
+\hline
+\rowcolor{lightgray}
+$N$ & \texttt{RadixSort}, мкс & \texttt{std::stable\_sort}, мкс \\
+\hline
+100 & 8 & 7 \\
+\hline
+1\,000 & 66 & 74 \\
+\hline
+10\,000 & 831 & 1\,133 \\
+\hline
+100\,000 & 14\,291 & 19\,226 \\
+\hline
+1\,000\,000 & 140\,767 & 191\,842 \\
+\hline
+\end{tabular}
+\caption{Время сортировки в микросекундах}
+\end{table}
 
 \begin{alltt}
-root@794a05b215ca:/workspaces/discrete-analysis-labs# python3 lab1/benchmark/generator.py 100
-root@794a05b215ca:/workspaces/discrete-analysis-labs# ./build/lab1/lab1_benchmark < tests.txt
-Radix sort time: 108us
-STL stable sort time: 150us
-root@794a05b215ca:/workspaces/discrete-analysis-labs# python3 lab1/benchmark/generator.py 1000
-root@794a05b215ca:/workspaces/discrete-analysis-labs# ./build/lab1/lab1_benchmark < tests.txt
-Radix sort time: 1007us
-STL stable sort time: 1258us
-root@794a05b215ca:/workspaces/discrete-analysis-labs# python3 lab1/benchmark/generator.py 10000
-root@794a05b215ca:/workspaces/discrete-analysis-labs# ./build/lab1/lab1_benchmark < tests.txt
-Radix sort time: 8856us
-STL stable sort time: 14353us
-root@794a05b215ca:/workspaces/discrete-analysis-labs# python3 lab1/benchmark/generator.py 100000
-root@794a05b215ca:/workspaces/discrete-analysis-labs# ./build/lab1/lab1_benchmark < tests.txt
-Radix sort time: 113872us
-STL stable sort time: 175208us
-root@794a05b215ca:/workspaces/discrete-analysis-labs# python3 lab1/benchmark/generator.py 1000000
-root@794a05b215ca:/workspaces/discrete-analysis-labs# ./build/lab1/lab1_benchmark < tests.txt
-Radix sort time: 833755us
-STL stable sort time: 1627027us
+# python3 lab1/benchmark/generator.py 100 && ./build/lab1/lab1_benchmark < tests.txt
+Radix sort time: 8us
+STL stable sort time: 7us
+# python3 lab1/benchmark/generator.py 1000 && ./build/lab1/lab1_benchmark < tests.txt
+Radix sort time: 66us
+STL stable sort time: 74us
+# python3 lab1/benchmark/generator.py 10000 && ./build/lab1/lab1_benchmark < tests.txt
+Radix sort time: 831us
+STL stable sort time: 1133us
+# python3 lab1/benchmark/generator.py 100000 && ./build/lab1/lab1_benchmark < tests.txt
+Radix sort time: 14291us
+STL stable sort time: 19226us
+# python3 lab1/benchmark/generator.py 1000000 && ./build/lab1/lab1_benchmark < tests.txt
+Radix sort time: 140767us
+STL stable sort time: 191842us
 \end{alltt}
 
-Как видно из результатов, поразрядная сортировка опережает \texttt{std::stable\_sort}
-на всех размерах входных данных. Это объясняется тем, что асимптотическая сложность
-нашего алгоритма составляет $O(n \cdot k)$, где $k = 4$ (количество байт в
-\texttt{uint32\_t}) — то есть фактически $O(n)$, тогда как сложность
-\texttt{std::stable\_sort} равна $O(n \log n)$. При увеличении числа элементов
-с $100$ до $1\,000\,000$ разрыв становится всё более заметным: на миллионе элементов
-наш алгоритм работает почти в \textbf{2 раза быстрее}.
+\subsection{Анализ результатов}
+
+На малых объёмах ($N = 100$) оба алгоритма работают за доли миллисекунды и накладные
+расходы на системный вызов сопоставимы с полезной работой, поэтому разница незначительна.
+
+Начиная с $N = 1\,000$ поразрядная сортировка стабильно опережает \texttt{std::stable\_sort}.
+Это соответствует теоретическим оценкам: сложность \texttt{RadixSort} составляет $O(n \cdot k)$,
+где $k = 4$~--- фиксированное число байт в \texttt{uint32\_t}, то есть фактически $O(n)$.
+Сложность \texttt{std::stable\_sort} равна $O(n \log n)$.
+
+На $N = 10^6$ поразрядная сортировка работает в \textbf{1.36 раза} быстрее (140\,767~мкс
+против 191\,842~мкс). Разрыв не такой большой, как ожидался от линейного алгоритма,
+поскольку \texttt{RadixSort} делает 4 полных прохода по массиву (итого 4 прохода по памяти),
+а \texttt{std::stable\_sort} использует блочные операции, дружественные кэшу.
+Тем не менее линейная асимптотика подтверждается: при увеличении $N$ в 10 раз время
+\texttt{RadixSort} растёт примерно в 10 раз, тогда как \texttt{std::stable\_sort}~--- чуть быстрее.
+
 \pagebreak
