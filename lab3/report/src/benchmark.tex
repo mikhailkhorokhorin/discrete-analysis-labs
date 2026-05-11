@@ -1,0 +1,131 @@
+\section{Результаты исследования производительности}
+
+В данном разделе представлены результаты тестирования PATRICIA-дерева в сравнении
+со стандартным контейнером \texttt{std::map}, а также анализ потребления памяти и
+профилирования исправленной программы.
+
+\subsection{Анализ потребления оперативной памяти}
+
+Для проверки ошибок работы с динамической памятью использовалась утилита Valgrind
+Memcheck. Запуск выполнялся на наборе из $100\,000$ вставок, $100\,000$ поисков и
+$100\,000$ удалений.
+
+\begin{alltt}
+HEAP SUMMARY:
+    in use at exit: 122,880 bytes in 6 blocks
+    total heap usage: 261,459 allocs, 261,453 frees, 9,988,494 bytes allocated
+
+LEAK SUMMARY:
+    definitely lost: 0 bytes in 0 blocks
+    indirectly lost: 0 bytes in 0 blocks
+    possibly lost: 0 bytes in 0 blocks
+    still reachable: 122,880 bytes in 6 blocks
+
+ERROR SUMMARY: 0 errors from 0 contexts
+\end{alltt}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|p{5.5cm}|p{4cm}|p{4cm}|}
+\hline
+\rowcolor{lightgray}
+Показатель & PATRICIA & Комментарий \\
+\hline
+Ошибки памяти & 0 & Некорректных чтений и записей не обнаружено \\
+\hline
+Утечки пользовательской памяти & 0 bytes & Узлы дерева освобождаются корректно \\
+\hline
+\texttt{still reachable} & 122\,880 bytes & Буферы стандартной библиотеки ввода-вывода \\
+\hline
+Пик heap по Massif & 7.335 MB & Набор из $100\,000$ слов \\
+\hline
+\end{tabular}
+\end{table}
+
+Вывод по памяти: утечек в пользовательском коде не найдено. Память, отмеченная как
+\texttt{still reachable}, относится к внутренним буферам libstdc++ и не является
+ошибкой реализации словаря.
+
+\subsection{Исследование скорости выполнения}
+
+Замеры времени проводились на операциях вставки, поиска и удаления строковых ключей.
+Сравнение выполнялось с \texttt{std::map}.
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|r|r|r|r|r|r|r|}
+\hline
+\rowcolor{lightgray}
+& \multicolumn{3}{c|}{PATRICIA, мкс} & \multicolumn{3}{c|}{\texttt{std::map}, мкс} \\
+\hline
+\rowcolor{lightgray}
+$N$ & Insert & Find & Remove & Insert & Find & Remove \\
+\hline
+1\,000 & 348 & 208 & 465 & 214 & 161 & 303 \\
+\hline
+10\,000 & 4\,731 & 3\,246 & 8\,264 & 4\,251 & 2\,405 & 3\,711 \\
+\hline
+100\,000 & 86\,469 & 75\,838 & 100\,506 & 87\,293 & 73\,691 & 81\,991 \\
+\hline
+500\,000 & 731\,836 & 695\,895 & 764\,450 & 766\,442 & 748\,168 & 785\,446 \\
+\hline
+1\,000\,000 & 1\,842\,835 & 2\,022\,130 & 2\,038\,648 & 1\,953\,836 & 1\,985\,049 & 2\,322\,171 \\
+\hline
+\end{tabular}
+\end{table}
+
+На малых объёмах \texttt{std::map} быстрее из-за меньших накладных расходов. На больших
+наборах PATRICIA начинает выигрывать на части операций: при $N=500\,000$ быстрее поиск
+и удаление, при $N=1\,000\,000$ быстрее вставка и удаление.
+
+\subsection{Анализ производительности с помощью gprof}
+
+Для детального анализа времени выполнения была собрана цель \texttt{lab3\_profile}
+с флагом \texttt{-pg}. Отчёт \texttt{gprof} для $100\,000$ операций каждого типа
+показал следующие основные строки.
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{lightgray}
+Функция & Доля времени, \% & Число вызовов \\
+\hline
+\texttt{main} & 46.68 & -- \\
+\hline
+\texttt{TPatriciaTrie::Remove} & 20.01 & 100\,000 \\
+\hline
+\texttt{TPatriciaTrie::Find} & 17.78 & 100\,000 \\
+\hline
+\texttt{TPatriciaTrie::Insert} & 15.56 & 100\,000 \\
+\hline
+\texttt{NormalizeKey} & 0.00 & 400\,000 \\
+\hline
+\end{tabular}
+\end{table}
+
+Профилирование показывает, что основное время тратится на разбор входа и операции
+дерева. Удаление является наиболее дорогой операцией PATRICIA, потому что после
+физического удаления узла нужно корректно восстановить обратные рёбра.
+
+\subsection{Сравнение исходной и исправленной версии}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|r|r|r|}
+\hline
+\rowcolor{lightgray}
+Версия & Insert, мкс & Find, мкс & Remove, мкс \\
+\hline
+Исходная & 111\,895 & 111\,360 & 128\,464 \\
+\hline
+Исправленная & 99\,566 & 109\,004 & 116\,582 \\
+\hline
+\end{tabular}
+\end{table}
+
+Исправления не изменили асимптотику операций дерева. Разница во времени находится
+в пределах практических колебаний запусков внутри контейнера; основная польза исправлений
+заключается в корректной обработке ошибок сериализации и честном benchmark.
+
+\pagebreak
