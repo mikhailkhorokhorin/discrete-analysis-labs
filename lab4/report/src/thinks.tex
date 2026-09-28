@@ -1,16 +1,17 @@
-\section{Выводы}
+\section{Conclusions}
 
-Выполнив данную лабораторную работу по курсу \enquote{Дискретный анализ},
-я реализовал алгоритм Кнута"---Морриса"---Пратта для поиска образца в тексте над
-алфавитом целых чисел. Разобрался с построением префикс-функции и механизмом
-откатов, позволяющим избежать повторных сравнений. Реализовал корректную обработку
-ведущих нулей через стандартное считывание \texttt{uint32\_t}, а также потоковый
-поиск вхождений, пересекающих границы строк, без хранения всего текста в памяти.
+In this laboratory work for the course \enquote{Discrete Analysis}
+I implemented the Knuth--Morris--Pratt algorithm for finding a pattern in a text over the
+alphabet of integers. I studied the construction of the prefix function and the fallback
+mechanism that avoids repeated comparisons. I implemented correct handling of leading zeros
+by parsing numbers into \texttt{uint32\_t}, reporting of invalid tokens instead of silent
+truncation, and streaming search for occurrences that cross line boundaries without storing
+the whole text in memory, using \texttt{KmpMatcher} with a ring buffer of the last $|P|$ positions.
 
-Тестирование подтвердило теоретические оценки: на случайных данных преимущество КМП
-не всегда заметно из-за коротких частичных совпадений, однако на патологических входах
-(образец из 19 единиц и завершающей двойки в тексте из единиц) алгоритм работает
-примерно в \textbf{4.7$\times$} быстрее наивного поиска при $n = 5\,000\,000$,
-демонстрируя линейное время против квадратичного.
+Testing confirmed the theoretical estimates: on random data the advantage of KMP is not always
+noticeable because partial matches are short, but on pathological inputs
+(a pattern of 19 ones followed by a two in a text of ones) the algorithm is
+about \textbf{4.7$\times$} faster than naive search for $|T| = 5\,000\,000$,
+which illustrates the difference between $O(|P| + |T|)$ and $O(|P| \cdot |T|)$.
 
 \pagebreak

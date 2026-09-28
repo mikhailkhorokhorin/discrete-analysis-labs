@@ -1,340 +1,179 @@
-\section{Описание}
+\section{Description}
 
-Требуется написать реализацию словаря на основе дерева PATRICIA (Practical Algorithm To Retrieve
+The task is to implement a dictionary based on the PATRICIA tree (Practical Algorithm To Retrieve
 Information Coded In Alphanumeric).
 
-PATRICIA-дерево~--- это сжатое бинарное trie, в котором каждый узел хранит номер критического
-бита ключа, по которому происходит ветвление. Это позволяет избежать цепочек однодочерних
-узлов и свести высоту дерева к $O(\log n)$ в среднем для случайных ключей.
+A PATRICIA tree is a compressed binary trie in which every node stores the index of the critical
+bit of the key that is used for branching. This avoids chains of single-child nodes and keeps the
+height of the tree at $O(\log n)$ on average for random keys.
 
-Ключевая особенность структуры~--- \textit{обратные рёбра} (back-edges): когда при обходе
-номер критического бита следующего узла не превышает номера текущего, обход заканчивается.
-Узел назначения такого ребра является кандидатом для полного сравнения строк.
+The key feature of the structure is \textit{back edges}: when during a descent the critical bit
+index of the next node does not exceed the index of the current node, the descent stops. The
+target node of such an edge is the candidate for a full string comparison.
 
-Для корректной обработки граничных случаев используется узел-заголовок (\texttt{header}) с
-нулевым критическим битом, левый потомок которого является корнем дерева. Все ключи
-переводятся в нижний регистр, что обеспечивает регистронезависимость. Словарь поддерживает
-операции \texttt{Insert}, \texttt{Find}, \texttt{Remove}, а также бинарные \texttt{Save}
-и \texttt{Load}.
+To handle boundary cases correctly, a header node (\texttt{header\_}) with a zero critical bit is
+used; its left child is the root of the tree. All keys are converted to lower case, which makes the
+dictionary case-insensitive. The dictionary supports the operations \texttt{insert},
+\texttt{find}, \texttt{remove}, as well as binary \texttt{save} and \texttt{load}.
 
 \pagebreak
 
-\section{Исходный код}
+\section{Source code}
 
-\subsection{Вспомогательные функции}
+\subsection{Helper functions}
 
-Функция \texttt{ExtractBit} извлекает $i$-й бит строки (нумерация с 1, старший бит первого
-байта~--- бит 1). Функция \texttt{FindFirstDiffBit} находит позицию первого бита,
-в котором два ключа различаются,~--- результат используется при вставке для определения
-критического бита нового узла. Функция \texttt{NormalizeKey} приводит ключ к нижнему регистру.
+The function \texttt{extractBit} extracts the $i$-th bit of a string (numbering starts at 1, the
+most significant bit of the first byte is bit 1). The function \texttt{firstDifferentBit} finds
+the position of the first bit in which two keys differ; the result is used during insertion to
+determine the critical bit of the new node. The functions \texttt{writeUnsigned} and
+\texttt{readUnsigned} write and read unsigned integers of a given width in little-endian byte
+order. The public free function \texttt{isValidKey} checks that a key consists only of English
+letters and has length from 1 to 256, and \texttt{normalizeKey} converts a key to lower case.
 
-\begin{lstlisting}[language=C++, caption={Вспомогательные функции}]
-static int ExtractBit(const std::string &key, int pos) {
-    int byteIdx = (pos - 1) / 8;
-    int bitOff  = 7 - ((pos - 1) % 8);
-    if (byteIdx >= static_cast<int>(key.size())) {
-        return 0;
-    }
-    return (static_cast<unsigned char>(key[byteIdx]) >> bitOff) & 1;
-}
+\subsection{Node structure and the trie class}
 
-static std::string NormalizeKey(const std::string &s) {
-    std::string result(s.size(), '\0');
-    for (int i = 0; i < static_cast<int>(s.size()); i++) {
-        result[i] = static_cast<char>(
-            tolower(static_cast<unsigned char>(s[i])));
-    }
-    return result;
-}
-
-static int FindFirstDiffBit(const std::string &a, const std::string &b) {
-    int maxLen = static_cast<int>(
-        a.size() > b.size() ? a.size() : b.size());
-    for (int i = 0; i < maxLen; i++) {
-        unsigned char x = (i < static_cast<int>(a.size()))
-            ? static_cast<unsigned char>(a[i]) : 0;
-        unsigned char y = (i < static_cast<int>(b.size()))
-            ? static_cast<unsigned char>(b[i]) : 0;
-        if (x != y) {
-            unsigned char diff = x ^ y;
-            int shift = 0;
-            while ((diff & 0x80) == 0) { diff <<= 1; shift++; }
-            return i * 8 + shift + 1;
-        }
-    }
-    return maxLen * 8 + 1;
-}
-\end{lstlisting}
-
-\subsection{Структура узла и класс дерева}
-
-Каждый узел хранит ключ, значение, номер критического бита и указатели на двух потомков.
-Поле \texttt{size} в классе \texttt{TPatriciaTrie} отслеживает количество элементов.
+Every node stores a key, a value, the critical bit index and pointers to two children. The field
+\texttt{size\_} of the class \texttt{PatriciaTrie} tracks the number of elements. The node type is
+a private nested structure \texttt{PatriciaTrie::Node}; the class owns its nodes, so copying is
+disabled and only moving is allowed.
 
 \begin{table}[!ht]
 \centering
-\begin{tabular}{|p{7.5cm}|p{7.5cm}|}
+\begin{tabular}{|P{7.5cm}|P{7.5cm}|}
 \hline
 \rowcolor{lightgray}
-\multicolumn{2}{|c|}{include/patricia.hpp} \\
+\multicolumn{2}{|c|}{include/patricia\_trie.hpp} \\
 \hline
-\texttt{struct TNode} & Узел: ключ, значение, критический бит, указатели на потомков \\
+\texttt{class PatriciaError} & Exception derived from \texttt{std::runtime\_error}, thrown by file operations \\
 \hline
-\texttt{class TPatriciaTrie} & Словарь: \texttt{Insert}, \texttt{Find}, \texttt{Remove}, \texttt{Save}, \texttt{Load} \\
+\texttt{bool isValidKey(std::string\_view)} & Checks that a key consists of 1 to 256 English letters \\
+\hline
+\texttt{std::string normalizeKey(std::string\_view)} & Converts a key to lower case \\
+\hline
+\texttt{class PatriciaTrie} & Dictionary: \texttt{find}, \texttt{insert}, \texttt{remove}, \texttt{size}, \texttt{empty}, \texttt{clear}, \texttt{swap}, \texttt{save}, \texttt{load}, \texttt{saveToFile}, \texttt{loadFromFile} \\
+\hline
+\texttt{struct PatriciaTrie::Node} & Private node: key, value, critical bit, pointers to the children \\
 \hline
 \end{tabular}
 \end{table}
 
-\begin{lstlisting}[language=C++, caption={Объявления TNode и TPatriciaTrie}]
-struct TNode {
-    std::string key;
-    uint64_t value;
-    int checkBit;
-    TNode *left;
-    TNode *right;
-    TNode(const std::string &k, uint64_t v, int b);
-};
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|P{7.5cm}|P{7.5cm}|}
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{Methods of \texttt{PatriciaTrie}} \\
+\hline
+\texttt{std::optional<std::uint64\_t> find(std::string\_view key) const} & Returns the value of a key or \texttt{std::nullopt} \\
+\hline
+\texttt{bool insert(std::string\_view key, std::uint64\_t value)} & Inserts a key; returns \texttt{false} if it already exists \\
+\hline
+\texttt{bool remove(std::string\_view key)} & Removes a key; returns \texttt{false} if it is absent \\
+\hline
+\texttt{void save(std::ostream\&) const} & Writes the dictionary in the binary format \\
+\hline
+\texttt{static PatriciaTrie load(std::istream\&)} & Reads and validates a dictionary from a stream \\
+\hline
+\texttt{void saveToFile(const std::string\&) const} & Saves the dictionary to a file \\
+\hline
+\texttt{void loadFromFile(const std::string\&)} & Loads a dictionary from a file and replaces the current one \\
+\hline
+\texttt{searchNode}, \texttt{findParentLink}, \texttt{removeNodeWithSelfLoop}, \texttt{removeNodeWithoutSelfLoop}, \texttt{saveSubtree}, \texttt{destroySubtree} & Private helper methods \\
+\hline
+\end{tabular}
+\end{table}
 
-class TPatriciaTrie {
-  public:
-    TPatriciaTrie();
-    ~TPatriciaTrie();
-    bool Find(const std::string &key, uint64_t &value) const;
-    bool Insert(const std::string &key, uint64_t value);
-    bool Remove(const std::string &key);
-    bool Save(const std::string &path) const;
-    bool Load(const std::string &path);
-  private:
-    TNode *header;
-    int size;
-    TNode *SearchNode(const std::string &key) const;
-    TNode **FindParentPtr(TNode *target, const std::string &key) const;
-    void SaveSubtree(std::ofstream &file, TNode *cur) const;
-    void DestroySubtree(TNode *cur);
-};
-\end{lstlisting}
+\subsection{Search}
 
-\subsection{Поиск}
+The method \texttt{searchNode} descends the tree, choosing the branch by the critical bit, until it
+meets a back edge (the bit index of the next node is $\leq$ the index of the current one). The node
+found is a candidate for which \texttt{find} performs a full string comparison and returns the
+value wrapped in \texttt{std::optional}, or \texttt{std::nullopt} if the keys differ.
 
-Функция \texttt{SearchNode} спускается по дереву, выбирая ветвь по критическому биту,
-до тех пор пока не встретит обратное ребро (номер бита следующего узла $\leq$ текущего).
-Найденный узел~--- кандидат, для которого \texttt{Find} выполняет полное сравнение строк.
+\subsection{Insertion}
 
-\begin{lstlisting}[language=C++, caption={SearchNode и Find}]
-TNode *TPatriciaTrie::SearchNode(const std::string &key) const {
-    TNode *prev = header;
-    TNode *cur  = header->left;
-    while (cur->checkBit > prev->checkBit) {
-        prev = cur;
-        if (ExtractBit(key, cur->checkBit)) {
-            cur = cur->right;
-        } else {
-            cur = cur->left;
-        }
-    }
-    return cur;
-}
+During insertion \texttt{searchNode} is executed first to detect a collision or to obtain a
+reference key. The function \texttt{firstDifferentBit} computes the critical bit of the new node.
+Then a second descent is performed down to the position where the new node must be inserted,
+after which the node is attached with a back edge to itself.
 
-bool TPatriciaTrie::Find(const std::string &key, uint64_t &value) const {
-    if (!header) {
-        return false;
-    }
-    TNode *found = SearchNode(key);
-    if (found->key != key) {
-        return false;
-    }
-    value = found->value;
-    return true;
-}
-\end{lstlisting}
+\subsection{Removal}
 
-\subsection{Вставка}
+The method \texttt{remove} handles two cases. If the node being removed has a back edge to itself
+(a leaf node), \texttt{removeNodeWithSelfLoop} switches the parent link, found by
+\texttt{findParentLink}, to the other child. Otherwise the back edge to the node comes from another
+node (the holder): \texttt{removeNodeWithoutSelfLoop} moves the data of the holder into the node
+being removed, updates all links that pointed to the holder and physically deletes the holder.
 
-При вставке сначала выполняется \texttt{SearchNode}, чтобы найти коллизию или определить
-ключ-ориентир. Функция \texttt{FindFirstDiffBit} вычисляет критический бит нового узла.
-Затем выполняется повторный спуск до позиции, куда нужно вставить новый узел,
-после чего он подвешивается с обратным ребром на себя.
+\subsection{Serialization}
 
-\begin{lstlisting}[language=C++, caption={Insert}]
-bool TPatriciaTrie::Insert(const std::string &key, uint64_t value) {
-    if (!header) {
-        header = new TNode(key, value, 0);
-        header->left = header;
-        header->right = nullptr;
-        size++;
-        return true;
-    }
-    TNode *existing = SearchNode(key);
-    if (existing->key == key) {
-        return false;
-    }
-    int diffBit = FindFirstDiffBit(key, existing->key);
-    TNode *prev = header;
-    TNode *cur  = header->left;
-    while (cur->checkBit > prev->checkBit && cur->checkBit < diffBit) {
-        prev = cur;
-        if (ExtractBit(key, cur->checkBit)) {
-            cur = cur->right;
-        } else {
-            cur = cur->left;
-        }
-    }
-    TNode *newNode = new TNode(key, value, diffBit);
-    if (ExtractBit(key, diffBit)) {
-        newNode->right = newNode;
-        newNode->left  = cur;
-    } else {
-        newNode->left  = newNode;
-        newNode->right = cur;
-    }
-    if (prev == header) {
-        header->left = newNode;
-    } else if (ExtractBit(key, prev->checkBit)) {
-        prev->right = newNode;
-    } else {
-        prev->left = newNode;
-    }
-    size++;
-    return true;
-}
-\end{lstlisting}
+The file starts with a header: the 8-byte magic string \texttt{PATRICIA}, a 4-byte version number
+(currently 1) and an 8-byte number of entries. The method \texttt{saveSubtree} traverses the tree
+recursively and writes every node as a triple: key length (2 bytes), the key itself and the value
+(8 bytes). All integers are stored in little-endian byte order. Two bytes are used for the length
+because by the statement a key may be 256 characters long, and one byte is not enough for this
+value.
 
-\subsection{Удаление}
+The method \texttt{load} checks the magic string and the version, reads exactly the declared number
+of entries, validates every key (length, English letters only, lower case, no duplicates) and
+requires that no extra bytes follow the last entry. Entries are inserted into a new tree through
+\texttt{insert}. The method \texttt{loadFromFile} replaces the current state with the loaded tree
+through \texttt{swap} only after the whole file has been read successfully. Any error is reported
+with a \texttt{PatriciaError} exception: \enquote{cannot open file for writing}, \enquote{cannot
+open file for reading}, \enquote{failed to write file}, \enquote{invalid file format},
+\enquote{unsupported file version}. In this case the working dictionary remains unchanged. The
+method \texttt{destroySubtree} frees the nodes recursively in the destructor and in
+\texttt{clear}.
 
-Удаление обрабатывает два случая. Если у удаляемого узла есть обратное ребро на самого
-себя (листовой узел), родительский указатель переключается на другого потомка.
-Иначе обратное ребро указывает на другой узел (\texttt{backEdgeHolder}): данные
-переносятся из \texttt{backEdgeHolder} в удаляемый узел, а \texttt{backEdgeHolder}
-физически удаляется, предварительно обновив все указывавшие на него ссылки.
+\subsection{Command processing}
 
-\begin{lstlisting}[language=C++, caption={Remove — два случая удаления}]
-bool TPatriciaTrie::Remove(const std::string &key) {
-    if (!header) {
-        return false;
-    }
-    TNode *target = SearchNode(key);
-    if (target->key != key) {
-        return false;
-    }
-    bool selfRef = (target->left == target || target->right == target);
-    if (selfRef) {
-        if (target == header) {
-            delete header;
-            header = nullptr;
-            size--;
-            return true;
-        }
-        TNode *other = (target->left == target)
-            ? target->right : target->left;
-        *FindParentPtr(target, key) = other;
-        delete target;
-        size--;
-        return true;
-    }
-    /* ... find backEdgeHolder and move data ... */
-    size--;
-    return true;
-}
-\end{lstlisting}
+The class \texttt{Dictionary} parses one input line in the method \texttt{execute}: the line is
+split into tokens, the command is determined by the first token, keys are checked with
+\texttt{isValidKey} and normalized with \texttt{normalizeKey} before being passed to the tree. The
+responses are \texttt{OK}, \texttt{Exist}, \texttt{NoSuchWord} and \texttt{OK: N}. Errors are
+reported with the lines \texttt{ERROR: invalid command}, \texttt{ERROR: unknown command},
+\texttt{ERROR: invalid key}, \texttt{ERROR: invalid value}, and for file commands with the text of
+the \texttt{PatriciaError} exception prefixed by \texttt{ERROR:}. The function
+\texttt{runDictionary} reads commands line by line and prints a response for every non-empty
+line; if memory allocation fails, it prints \texttt{ERROR: out of memory}. The function
+\texttt{main} only calls it for the standard streams.
 
-\subsection{Сериализация}
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|P{7.5cm}|P{7.5cm}|}
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{include/dictionary.hpp} \\
+\hline
+\texttt{class Dictionary} & Command interpreter over \texttt{PatriciaTrie} \\
+\hline
+\texttt{std::optional<std::string> execute(std::string\_view line)} & Executes one command line and returns the response, or \texttt{std::nullopt} for an empty line \\
+\hline
+\texttt{void runDictionary(std::istream\&, std::ostream\&)} & Processes all input lines \\
+\hline
+\end{tabular}
+\end{table}
 
-Метод \texttt{Save} обходит дерево рекурсивно и записывает каждый узел как тройку:
-длина ключа (2 байта), сам ключ и значение (8 байт). Два байта используются потому,
-что по условию ключ может иметь длину 256 символов, а одного байта для такого значения
-недостаточно. Метод \texttt{Load} читает записи и вставляет их в новое дерево через
-\texttt{Insert}, после чего атомарно заменяет текущее состояние через \texttt{std::swap}.
-Если файл не удалось открыть или его формат повреждён, загрузка завершается ошибкой,
-а рабочий словарь остаётся неизменным.
+\subsection{Listings}
 
-\begin{lstlisting}[language=C++, caption={SaveSubtree и Load}]
-void TPatriciaTrie::SaveSubtree(std::ofstream &file, TNode *cur) const {
-    uint16_t klen = static_cast<uint16_t>(cur->key.size());
-    file.write(reinterpret_cast<const char *>(&klen), sizeof(klen));
-    file.write(cur->key.data(), klen);
-    file.write(reinterpret_cast<const char *>(&cur->value),
-               sizeof(cur->value));
-    if (cur->left  && cur->left->checkBit  > cur->checkBit) {
-        SaveSubtree(file, cur->left);
-    }
-    if (cur->right && cur->right->checkBit > cur->checkBit) {
-        SaveSubtree(file, cur->right);
-    }
-}
+\lstinputlisting[caption={include/patricia\_trie.hpp}]{../include/patricia_trie.hpp}
 
-bool TPatriciaTrie::Load(const std::string &path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        return false;
-    }
-    TPatriciaTrie tmp;
-    while (true) {
-        uint16_t klen = 0;
-        if (!file.read(reinterpret_cast<char *>(&klen), sizeof(klen))) {
-            if (!file.eof()) { return false; }
-            break;
-        }
-        if (klen == 0 || klen > MAX_KEY_LENGTH) { return false; }
-        std::string key(klen, '\0');
-        if (!file.read(&key[0], klen)) { return false; }
-        uint64_t val;
-        if (!file.read(reinterpret_cast<char *>(&val), sizeof(val))) {
-            return false;
-        }
-        if (!tmp.Insert(key, val)) { return false; }
-    }
-    std::swap(header, tmp.header);
-    std::swap(size,   tmp.size);
-    return true;
-}
-\end{lstlisting}
+\lstinputlisting[caption={src/patricia\_trie.cpp}]{../src/patricia_trie.cpp}
 
-\subsection{Обработка команд}
+\lstinputlisting[caption={include/dictionary.hpp}]{../include/dictionary.hpp}
 
-Функция \texttt{main} читает команды построчно. Ключи нормализуются через
-\texttt{NormalizeKey} перед передачей в дерево.
+\lstinputlisting[caption={src/dictionary.cpp}]{../src/dictionary.cpp}
 
-\begin{lstlisting}[language=C++, caption={Обработка команд в main}]
-while (std::getline(std::cin, line)) {
-    std::istringstream ss(line);
-    std::string cmd;
-    ss >> cmd;
-    if (cmd == "+") {
-        std::string word; uint64_t val;
-        ss >> word >> val;
-        std::cout << (trie.Insert(NormalizeKey(word), val)
-            ? "OK" : "Exist") << "\n";
-    } else if (cmd == "-") {
-        std::string word; ss >> word;
-        std::cout << (trie.Remove(NormalizeKey(word))
-            ? "OK" : "NoSuchWord") << "\n";
-    } else if (cmd == "!") {
-        std::string subcmd, path;
-        ss >> subcmd >> path;
-        if (subcmd == "Save") {
-            std::cout << (trie.Save(path) ? "OK" : "ERROR") << "\n";
-        } else if (subcmd == "Load") {
-            std::cout << (trie.Load(path) ? "OK" : "ERROR") << "\n";
-        }
-    } else {
-        uint64_t val;
-        if (trie.Find(NormalizeKey(cmd), val)) {
-            std::cout << "OK: " << val << "\n";
-        } else {
-            std::cout << "NoSuchWord\n";
-        }
-    }
-}
-\end{lstlisting}
+\needspace{18\baselineskip}
+\lstinputlisting[caption={app/main.cpp}]{../app/main.cpp}
 
 \pagebreak
 
-\section{Консоль}
+\section{Console}
 
 \begin{alltt}
-# cmake -B build -DCMAKE_BUILD_TYPE=Release
-# cmake --build build
-# ./build/lab2/lab2_main
+# make build PRESET=release
+# build/release/lab2/lab2_main
 + hello 42
 + Hello 99
 + world 7

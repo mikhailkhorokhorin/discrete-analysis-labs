@@ -1,36 +1,40 @@
-BasedOnStyle: LLVM
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++20
 
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
+ContinuationIndentWidth: 4
+ColumnLimit: 100
+AccessModifierOffset: -4
 
-BreakBeforeBraces: Attach
-AllowShortIfStatementsOnASingleLine: false
+AlignAfterOpenBracket: Align
+AlignOperands: Align
+AlignTrailingComments: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Never
-AllowShortFunctionsOnASingleLine: None
-AllowShortCaseLabelsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Inline
+InsertBraces: true
+FixNamespaceComments: false
 
-ColumnLimit: 100
-AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBraces: Attach
+BreakBeforeBinaryOperators: None
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLine
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+ReferenceAlignment: Pointer
+
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
 
 SpaceBeforeParens: ControlStatements
-SpacesInParentheses: false
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeRangeBasedForLoopColon: true
-SpacesInAngles: false
-SpaceInEmptyBlock: false
-
-BreakBeforeBinaryOperators: NonAssignment
-
-SortIncludes: true
-
-ReflowComments: false
-
-AlignOperands: true
-AlignTrailingComments: true
-
-MaxEmptyLinesToKeep: 1
-KeepEmptyLinesAtTheStartOfBlocks: false
-
-Standard: c++20
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true

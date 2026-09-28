@@ -1,55 +1,48 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 
-const int FIRST_SEPARATOR = 256;
-const int SECOND_SEPARATOR = 257;
-const int NO_CHILD = -1;
-const int LEAF_END = -1;
+inline constexpr int FIRST_SEPARATOR = 256;
+inline constexpr int SECOND_SEPARATOR = 257;
 
-struct TNode {
-    std::map<int, int> children;
-    int suffixLink;
-    int start;
-    int end;
+struct LcsResult {
+    std::size_t length = 0;
+    std::vector<std::string> substrings;
 
-    TNode(int start, int end);
+    bool operator==(const LcsResult& other) const = default;
 };
 
-class TSuffixTree {
-  public:
-    explicit TSuffixTree(const std::vector<int> &text);
+std::vector<int> buildCombinedText(const std::string& first, const std::string& second);
 
-    void FindLcs(int sep, int &outLen, std::set<std::string> &outResults) const;
+class SuffixTree {
+public:
+    explicit SuffixTree(std::vector<int> text);
 
-  private:
-    std::vector<int> text;
-    std::vector<TNode> nodes;
-    int leafEnd;
+    [[nodiscard]] LcsResult findLcs(std::size_t separator) const;
+    [[nodiscard]] std::size_t nodeCount() const { return nodes_.size(); }
 
-    int activeNode;
-    int activeEdge;
-    int activeLength;
-    int remaining;
+private:
+    struct Node {
+        std::map<int, int> children;
+        int suffixLink = 0;
+        int start = 0;
+        int end = 0;
+    };
 
-    int NewNode(int start, int end);
-    int EdgeLen(int idx) const;
-    int GetChild(int node, int ch) const;
-    void SetChild(int node, int ch, int child);
-    void Extend(int pos);
-    std::string MakeString(int start, int len) const;
+    int newNode(int start, int end);
+    [[nodiscard]] int edgeLength(int node) const;
+    [[nodiscard]] int child(int node, int symbol) const;
+    void extend(int position);
+    [[nodiscard]] std::string makeString(int start, int length) const;
 
-    int Dfs(
-        int idx,
-        int depth,
-        int sep,
-        int &bestLen,
-        std::set<std::string> &results,
-        int &firstStart
-    ) const;
+    std::vector<int> text_;
+    std::vector<Node> nodes_;
+    int leafEnd_ = -1;
+    int activeNode_ = 0;
+    int activeEdge_ = 0;
+    int activeLength_ = 0;
+    int remaining_ = 0;
 };
-
-std::vector<int> BuildCombinedText(const std::string &first, const std::string &second);

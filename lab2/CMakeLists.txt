@@ -1,16 +1,28 @@
-include_directories(include)
-
-add_library(lab2_core
-    src/patricia.cpp
+lab_library(lab2_core
+    SOURCES
+        src/dictionary.cpp
+        src/patricia_trie.cpp
 )
 
-add_executable(lab2_main
-    app/main.cpp
+lab_executable(lab2_main
+    SOURCES app/main.cpp
+    LINK lab2_core
 )
 
-add_executable(lab2_benchmark
-    benchmark/benchmark.cpp
+lab_executable(lab2_solution
+    SOURCES solution.cpp
 )
 
-target_link_libraries(lab2_main PRIVATE lab2_core)
-target_link_libraries(lab2_benchmark PRIVATE lab2_core)
+lab_executable(lab2_benchmark
+    SOURCES benchmark/benchmark.cpp
+    LINK lab2_core
+)
+
+lab_tests(lab2_tests
+    SOURCES
+        tests/patricia_trie.cpp
+        tests/dictionary.cpp
+        tests/e2e.cpp
+    LINK lab2_core
+    BINARIES lab2_main lab2_solution
+)

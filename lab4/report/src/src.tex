@@ -1,97 +1,107 @@
-\section{Описание}
+\section{Description}
 
-Требуется реализовать алгоритм Кнута"---Морриса"---Пратта для поиска одного образца
-в тексте над алфавитом чисел от~0 до~$2^{32}-1$.
+The task is to implement the Knuth--Morris--Pratt algorithm for finding one pattern
+in a text over the alphabet of numbers from~0 to~$2^{32}-1$.
 
-Алгоритм КМП работает за $O(|P| + |T|)$, где $|P|$~--- длина образца, а $|T|$~---
-длина текста. Сначала для образца строится префикс-функция $\pi$: значение
-$\pi[i]$ равно длине наибольшего собственного префикса $P[0..i]$, который одновременно
-является суффиксом этой последовательности. Затем текст просматривается слева направо.
-При несовпадении алгоритм не возвращается назад по тексту, а использует $\pi$ для
-выбора следующей длины уже совпавшего префикса.
+The KMP algorithm runs in $O(|P| + |T|)$, where $|P|$ is the length of the pattern and $|T|$ is
+the length of the text. First, the prefix function $\pi$ is built for the pattern: the value
+$\pi[i]$ is the length of the longest proper prefix of $P[0..i]$ that is also a suffix of this
+sequence. Then the text is scanned from left to right. On a mismatch the algorithm never moves
+back in the text; instead it uses $\pi$ to choose the next length of the already matched prefix.
 
-Числа считываются в тип \texttt{uint32\_t}. Стандартное числовое считывание корректно
-обрабатывает ведущие нули: \texttt{0011} и \texttt{11} становятся одним и тем же
-значением~11.
-
-\pagebreak
-
-\section{Исходный код}
-
-\subsection{Префикс-функция}
-
-Функция \texttt{BuildPrefixFunction} строит массив $\pi$ для образца. Переменная
-\texttt{k} хранит текущую длину совпавшего префикса. Пока следующий символ не подходит,
-значение \texttt{k} откатывается по уже посчитанным значениям префикс-функции.
-
-\begin{lstlisting}[language=C++, caption={Построение префикс-функции}]
-std::vector<int> BuildPrefixFunction(const std::vector<TToken> &pattern) {
-    int patternLen = static_cast<int>(pattern.size());
-    std::vector<int> prefixFunc(patternLen, 0);
-
-    for (int i = 1; i < patternLen; ++i) {
-        int k = prefixFunc[i - 1];
-        while (k > 0 && pattern[i] != pattern[k]) {
-            k = prefixFunc[k - 1];
-        }
-        if (pattern[i] == pattern[k]) {
-            ++k;
-        }
-        prefixFunc[i] = k;
-    }
-
-    return prefixFunc;
-}
-\end{lstlisting}
-
-\subsection{Поиск}
-
-В основном решении текст обрабатывается потоково, построчно и пословно. Это важно,
-поскольку в условии нет ограничений на длину текста, а лимит памяти составляет 64 MB.
-Для вывода позиции найденного вхождения хранится только очередь последних $|P|$
-позиций \texttt{positionWindow}. Сам алгоритм остаётся классическим КМП: переменная
-\texttt{matched} хранит длину совпавшего префикса образца.
-
-\begin{lstlisting}[language=C++, caption={Потоковый проход КМП в main}]
-while (ss >> token) {
-    positionWindow.emplace_back(lineNumber, wordNumber);
-    if (static_cast<int>(positionWindow.size()) > patternLen) {
-        positionWindow.pop_front();
-    }
-
-    while (matched > 0 && token != pattern[matched]) {
-        matched = prefixFunc[matched - 1];
-    }
-    if (token == pattern[matched]) {
-        ++matched;
-    }
-    if (matched == patternLen) {
-        const TPosition &match = positionWindow.front();
-        std::cout << match.first << ", " << match.second << "\n";
-        matched = prefixFunc[matched - 1];
-    }
-
-    ++wordNumber;
-}
-\end{lstlisting}
-
-Для теста производительности также реализована функция \texttt{KmpSearch}, принимающая
-готовые векторы текста и позиций. Она использует тот же цикл КМП и нужна только для
-удобного сравнения с наивным алгоритмом в бенчмарке.
+Numbers are read into the type \texttt{Token}, an alias for \texttt{std::uint32\_t}, with
+\texttt{std::from\_chars}. Numeric parsing handles leading zeros correctly: \texttt{0011} and
+\texttt{11} become the same value~11. A token that is not a number or does not fit into
+$[0, 2^{32}-1]$ is not truncated silently: the program prints
+\texttt{ERROR: line N: invalid token 'x'} (or \texttt{ERROR: pattern: invalid token 'x'} for the
+pattern line) to the standard error stream and exits with code~1.
 
 \pagebreak
 
-\section{Консоль}
+\section{Source code}
+
+\subsection{Prefix function}
+
+The function \texttt{buildPrefixFunction} builds the array $\pi$ for the pattern. The variable
+\texttt{length} stores the current length of the matched prefix. While the next symbol does not
+match, \texttt{length} falls back along the already computed values of the prefix function.
+
+\subsection{Matcher}
+
+The class \texttt{KmpMatcher} holds the pattern, its prefix function and the length of the
+matched prefix \texttt{matched\_}. The method \texttt{feed(token, position)} processes one
+token of the text together with its position (a \texttt{Position} structure with the fields
+\texttt{line} and \texttt{word}) and returns \texttt{std::optional<Position>}: the position of
+the start of an occurrence if the pattern has just been matched, and \texttt{std::nullopt}
+otherwise. To report the start of an occurrence without storing the whole text, the matcher
+keeps a ring buffer \texttt{window\_} of the positions of the last $|P|$ tokens. The method
+\texttt{reset()} clears the state before a new text.
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|P{7cm}|}
+\hline
+\rowcolor{lightgray}
+Function & Purpose \\
+\hline
+\texttt{buildPrefixFunction(pattern)} & Builds the prefix function of the pattern in $O(|P|)$ \\
+\hline
+\texttt{KmpMatcher(pattern)} & Stores the pattern and builds its prefix function \\
+\hline
+\texttt{KmpMatcher::feed(token, position)} & Processes one token, returns the start of a found occurrence \\
+\hline
+\texttt{KmpMatcher::reset()} & Resets the matched length and the ring buffer counter \\
+\hline
+\texttt{kmpSearch(pattern, text, positions)} & Runs \texttt{KmpMatcher} over prepared vectors and returns all occurrences \\
+\hline
+\texttt{parseTokens(line)} & Splits a line into tokens and checks that each is a valid number \\
+\hline
+\texttt{runSearch(input, output)} & Streaming search: reads the pattern and the text line by line and prints occurrences \\
+\hline
+\end{tabular}
+\caption{Program interface}
+\end{table}
+
+\subsection{Search}
+
+In the main program the text is processed as a stream, line by line and word by word, in
+\texttt{runSearch}. This matters because the statement has no limits on the length of the text,
+while the memory limit is 64 MB. Each token is passed to \texttt{KmpMatcher::feed}, so occurrences
+that cross line boundaries are found naturally. The function \texttt{kmpSearch} is built on the
+same \texttt{KmpMatcher} and is used by the benchmark, so the benchmark measures exactly the code
+used by the application.
+
+\lstinputlisting[caption={include/kmp.hpp}]{../include/kmp.hpp}
+
+\lstinputlisting[caption={src/kmp.cpp}]{../src/kmp.cpp}
+
+\lstinputlisting[caption={include/search.hpp}]{../include/search.hpp}
+
+\lstinputlisting[caption={src/search.cpp}]{../src/search.cpp}
+
+\needspace{18\baselineskip}
+\lstinputlisting[caption={app/main.cpp}]{../app/main.cpp}
+
+\pagebreak
+
+\section{Console}
 
 \begin{alltt}
-# cmake -B build -DCMAKE_BUILD_TYPE=Release
-# cmake --build build
-# ./build/lab4/lab4_main
+# make build PRESET=release
+# build/release/lab4/lab4_main
 11 45 11 45 90
 0011 45 011 0045 11 45 90    11
 45 11 45 90
 1, 3
 1, 8
+# build/release/lab4/lab4_main
+1 2
+1 2 x 1 2
+1, 1
+ERROR: line 1: invalid token 'x'
+# build/release/lab4/lab4_main
+4294967296
+ERROR: pattern: invalid token '4294967296'
 \end{alltt}
 
 \pagebreak

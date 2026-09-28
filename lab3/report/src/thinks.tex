@@ -1,23 +1,24 @@
-\section{Выводы}
+\section{Conclusions}
 
-В ходе выполнения лабораторных работ была реализована структура данных PATRICIA
-для словаря строковых ключей и проведено исследование качества полученной программы.
-Реализованы поиск, вставка, удаление, сохранение и загрузка словаря из бинарного файла.
+During the laboratory works, the PATRICIA data structure was implemented for a dictionary of
+string keys, and the quality of the resulting program was studied. Lookup, insertion, removal,
+saving and loading of the dictionary from a binary file were implemented.
 
-Профилирование с помощью \texttt{gprof} показало, что основное время расходуется в
-операциях \texttt{Remove}, \texttt{Find} и \texttt{Insert}, что соответствует устройству
-программы: именно эти функции выполняют обход дерева по критическим битам.
+Profiling with \texttt{gprof} showed that, apart from reading and parsing the input, most of the
+time is spent in the removal, lookup and insertion operations, which matches the structure of the
+program: these functions traverse the tree by critical bits.
 
-Проверка Valgrind Memcheck не обнаружила утечек памяти и некорректных обращений в коде
-словаря. Massif показал умеренное потребление памяти: около 7.335 МБ heap-памяти для
-набора из $100\,000$ слов.
+Valgrind Memcheck found no memory leaks and no invalid accesses in the dictionary code. Massif
+showed moderate memory consumption: about 7.335 MB of heap memory for a set of $100\,000$ words.
 
-Были исправлены функциональные недочёты сериализации: загрузка отсутствующего файла,
-повреждённого файла и ключа максимальной длины 256 символов. Также был исправлен benchmark,
-чтобы измерение поиска PATRICIA не могло быть сведено оптимизатором к пустому циклу.
+Functional defects of serialization were fixed: loading a missing file, a damaged file or a file
+without the correct header, and saving a key of the maximum length of 256 characters. Error
+messages became specific, keys are validated, and unknown commands are reported. The benchmark was
+also fixed so that the PATRICIA lookup measurement cannot be reduced to an empty loop by the
+optimizer.
 
-Главный результат работы~--- программа стала надёжнее на ошибочных входах и честнее
-измеряется в тестах производительности, при этом базовая структура данных и её
-асимптотические свойства остались прежними.
+The main result of the work is that the program became more reliable on erroneous input and is
+measured more fairly in the performance tests, while the underlying data structure and its
+asymptotic properties remained the same.
 
 \pagebreak

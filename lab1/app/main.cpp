@@ -1,26 +1,21 @@
-#include "main.hpp"
-
+#include <exception>
 #include <iostream>
-#include <string>
+
+#include "pair.hpp"
+#include "radix_sort.hpp"
+#include "vector.hpp"
 
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    TVector<TPair> data;
-    std::string line;
-
-    while (std::getline(std::cin, line)) {
-        if (!line.empty()) {
-            data.PushBack(TPair(line));
-        }
+    try {
+        Vector<Pair> pairs = readPairs(std::cin);
+        radixSort(pairs);
+        writePairs(std::cout, pairs);
+    } catch (const std::exception& error) {
+        std::cerr << "ERROR: " << error.what() << '\n';
+        return 1;
     }
-
-    RadixSort(data);
-
-    for (size_t i = 0; i < data.Size(); ++i) {
-        std::cout << data[i].raw << "\n";
-    }
-
     return 0;
 }

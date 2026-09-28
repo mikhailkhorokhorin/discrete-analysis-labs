@@ -1,12 +1,95 @@
-\CWHeader{Лабораторная работа \textnumero 2}
+\CWHeader{Laboratory work No. 2}
 
 \CWProblem{
-Необходимо создать программную библиотеку, реализующую указанную структуру данных, на основе
-которой разработать программу-словарь. В словаре каждому ключу, представляющему из себя
-регистронезависимую последовательность букв английского алфавита длиной не более 256 символов,
-поставлен в соответствие некоторый номер, от 0 до $2^{64} - 1$. Разным словам может быть
-поставлен в соответствие один и тот же номер.
+You need to create a program library implementing the specified data structure, on the basis of
+which to develop a dictionary program. In the dictionary, each key, which is a case-insensitive
+sequence of letters of the English alphabet of no more than 256 characters, is associated with a
+number from 0 to $2^{64} - 1$. Different words can be assigned the same number.
 
-{\bfseries Вариант структуры данных:} PATRICIA.
+{\bfseries Data structure variant:} PATRICIA.
 }
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+Time limit & 15 seconds \\
+\hline
+Memory limit & 512 MB \\
+\hline
+Input & standard input or \texttt{input.txt} \\
+\hline
+Output & standard output or \texttt{output.txt} \\
+\hline
+\end{tabular}
+\end{table}
+
+The program must process lines of the input file until its end. Each line can have the following
+format:
+
+\begin{itemize}
+    \item \texttt{+ word 34}~--- add the word \enquote{word} with number 34 to the dictionary.
+    The program must output \enquote{OK} if the operation was successful, \enquote{Exist} if
+    the word is already in the dictionary.
+    \item \texttt{- word}~--- remove the word \enquote{word} from the dictionary. The program must
+    output \enquote{OK} if the word existed and was removed, \enquote{NoSuchWord} if the word was
+    not found in the dictionary.
+    \item \texttt{word}~--- find the word \enquote{word} in the dictionary. The program must output
+    \enquote{OK: 34} if the word was found (the number following \enquote{OK:} is the number
+    assigned to the word when it was added). If the word was not found in the dictionary, output
+    \enquote{NoSuchWord}.
+    \item \texttt{! Save /path/to/file}~--- save the dictionary to a file in binary compact
+    representation, at the path specified by the command parameter. If successful, the program
+    must output \enquote{OK}; if the operation fails, output a description of the error.
+    \item \texttt{! Load /path/to/file}~--- load the dictionary from a file. It is assumed that
+    the file was previously prepared using the Save command. If successful, the program must
+    output \enquote{OK} and the loaded dictionary replaces the current one; if unsuccessful,
+    diagnostics must be output and the working dictionary must remain unchanged. In addition to
+    system errors, the program must correctly handle cases where the format of the specified file
+    does not match the dictionary data representation in the external file.
+\end{itemize}
+
+For all operations, if a system error occurs (out of memory, no write permissions, etc.), the
+program must output a line starting with \enquote{ERROR:} and describing the error in English.
+
+The difference between variants lies only in the data structures used: {\bfseries PATRICIA}.
+
+\subsection*{Input format}
+
+Each non-empty line of the input contains one of the commands described above.
+
+\subsection*{Output format}
+
+For each input line, the program outputs one response line as specified above.
+
+\subsection*{Example}
+
+Input:
+
+{\footnotesize
+\begin{alltt}
++ a 1
++ A 2
++ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 18446744073709551615
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\linebreak{}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+A
+- A
+a
+\end{alltt}
+}
+
+Output:
+
+{\footnotesize
+\begin{alltt}
+OK
+Exist
+OK
+OK: 18446744073709551615
+OK: 1
+OK
+NoSuchWord
+\end{alltt}
+}
+
 \pagebreak

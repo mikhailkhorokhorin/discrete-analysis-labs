@@ -1,19 +1,19 @@
-\section{Результаты исследования производительности}
+\section{Performance research results}
 
-В данном разделе представлены результаты тестирования PATRICIA-дерева в сравнении
-со стандартным контейнером \texttt{std::map}, а также анализ потребления памяти и
-профилирования исправленной программы.
+This section presents the results of testing the PATRICIA tree compared with the standard
+container \texttt{std::map}, as well as the analysis of memory consumption and the profiling of
+the fixed program.
 
-\subsection{Анализ потребления оперативной памяти}
+\subsection{RAM consumption analysis}
 
-Для проверки ошибок работы с динамической памятью использовалась утилита Valgrind
-Memcheck. Запуск выполнялся на наборе из $100\,000$ вставок, $100\,000$ поисков и
-$100\,000$ удалений.
+The Valgrind Memcheck tool was used to check for dynamic memory errors. The run was performed on a
+test set of $100\,000$ insertions, $100\,000$ lookups and $100\,000$ removals.
 
+{\footnotesize
 \begin{alltt}
 HEAP SUMMARY:
     in use at exit: 122,880 bytes in 6 blocks
-    total heap usage: 261,459 allocs, 261,453 frees, 9,988,494 bytes allocated
+    total heap usage: 729,452 allocs, 729,446 frees, 24,697,187 bytes allocated
 
 LEAK SUMMARY:
     definitely lost: 0 bytes in 0 blocks
@@ -23,40 +23,41 @@ LEAK SUMMARY:
 
 ERROR SUMMARY: 0 errors from 0 contexts
 \end{alltt}
+}
 
 \begin{table}[!ht]
 \centering
-\begin{tabular}{|p{5.5cm}|p{4cm}|p{4cm}|}
+\begin{tabular}{|P{5.5cm}|P{4cm}|P{4cm}|}
 \hline
 \rowcolor{lightgray}
-Показатель & PATRICIA & Комментарий \\
+Metric & PATRICIA & Comment \\
 \hline
-Ошибки памяти & 0 & Некорректных чтений и записей не обнаружено \\
+Memory errors & 0 & No invalid reads or writes were found \\
 \hline
-Утечки пользовательской памяти & 0 bytes & Узлы дерева освобождаются корректно \\
+User memory leaks & 0 bytes & Tree nodes are freed correctly \\
 \hline
-\texttt{still reachable} & 122\,880 bytes & Буферы стандартной библиотеки ввода-вывода \\
+\texttt{still reachable} & 122\,880 bytes & Buffers of the standard I/O library \\
 \hline
-Пик heap по Massif & 7.335 MB & Набор из $100\,000$ слов \\
+Heap peak according to Massif & 7.335 MB & Set of $100\,000$ words \\
 \hline
 \end{tabular}
 \end{table}
 
-Вывод по памяти: утечек в пользовательском коде не найдено. Память, отмеченная как
-\texttt{still reachable}, относится к внутренним буферам libstdc++ и не является
-ошибкой реализации словаря.
+Memory conclusion: no leaks were found in the user code. The memory reported as
+\texttt{still reachable} belongs to internal libstdc++ buffers and is not an error of the
+dictionary implementation.
 
-\subsection{Исследование скорости выполнения}
+\subsection{Execution speed research}
 
-Замеры времени проводились на операциях вставки, поиска и удаления строковых ключей.
-Сравнение выполнялось с \texttt{std::map}.
+Time was measured for insertion, lookup and removal of string keys. The comparison was made with
+\texttt{std::map}.
 
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|r|r|r|r|r|r|r|}
 \hline
 \rowcolor{lightgray}
-& \multicolumn{3}{c|}{PATRICIA, мкс} & \multicolumn{3}{c|}{\texttt{std::map}, мкс} \\
+& \multicolumn{3}{c|}{PATRICIA, $\mu$s} & \multicolumn{3}{c|}{\texttt{std::map}, $\mu$s} \\
 \hline
 \rowcolor{lightgray}
 $N$ & Insert & Find & Remove & Insert & Find & Remove \\
@@ -74,58 +75,51 @@ $N$ & Insert & Find & Remove & Insert & Find & Remove \\
 \end{tabular}
 \end{table}
 
-На малых объёмах \texttt{std::map} быстрее из-за меньших накладных расходов. На больших
-наборах PATRICIA начинает выигрывать на части операций: при $N=500\,000$ быстрее поиск
-и удаление, при $N=1\,000\,000$ быстрее вставка и удаление.
+On small data sets \texttt{std::map} is faster because of its lower overhead. On large sets
+PATRICIA starts to win: for $N=500\,000$ all three operations are faster, and for
+$N=1\,000\,000$ insertion and removal are faster.
 
-\subsection{Анализ производительности с помощью gprof}
+\subsection{Performance analysis with gprof}
 
-Для детального анализа времени выполнения была собрана цель \texttt{lab3\_profile}
-с флагом \texttt{-pg}. Отчёт \texttt{gprof} для $100\,000$ операций каждого типа
-показал следующие основные строки.
+For a detailed analysis of the execution time, the target \texttt{lab3\_profile} was built with the
+\texttt{-pg} flag. The \texttt{gprof} report for $100\,000$ operations of each type showed the
+following main lines (\texttt{make research} on the current version of the code).
 
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|l|r|r|}
 \hline
 \rowcolor{lightgray}
-Функция & Доля времени, \% & Число вызовов \\
+Function & Share of time, \% & Number of calls \\
 \hline
-\texttt{main} & 46.68 & -- \\
+\texttt{main} & 59.20 & -- \\
 \hline
-\texttt{TPatriciaTrie::Remove} & 20.01 & 100\,000 \\
+\texttt{PatriciaTrie::remove} & 16.33 & 100\,000 \\
 \hline
-\texttt{TPatriciaTrie::Find} & 17.78 & 100\,000 \\
+\texttt{PatriciaTrie::find} & 12.25 & 100\,000 \\
 \hline
-\texttt{TPatriciaTrie::Insert} & 15.56 & 100\,000 \\
+\texttt{PatriciaTrie::insert} & 10.21 & 100\,000 \\
 \hline
-\texttt{NormalizeKey} & 0.00 & 400\,000 \\
+\texttt{PatriciaTrie::removeNodeWithoutSelfLoop} & 2.04 & 68\,956 \\
 \hline
-\end{tabular}
-\end{table}
-
-Профилирование показывает, что основное время тратится на разбор входа и операции
-дерева. Удаление является наиболее дорогой операцией PATRICIA, потому что после
-физического удаления узла нужно корректно восстановить обратные рёбра.
-
-\subsection{Сравнение исходной и исправленной версии}
-
-\begin{table}[!ht]
-\centering
-\begin{tabular}{|l|r|r|r|}
+\texttt{PatriciaTrie::removeNodeWithSelfLoop} & 0.00 & 31\,044 \\
 \hline
-\rowcolor{lightgray}
-Версия & Insert, мкс & Find, мкс & Remove, мкс \\
-\hline
-Исходная & 111\,895 & 111\,360 & 128\,464 \\
-\hline
-Исправленная & 99\,566 & 109\,004 & 116\,582 \\
+\texttt{normalizeKey} & 0.00 & 300\,000 \\
 \hline
 \end{tabular}
 \end{table}
 
-Исправления не изменили асимптотику операций дерева. Разница во времени находится
-в пределах практических колебаний запусков внутри контейнера; основная польза исправлений
-заключается в корректной обработке ошибок сериализации и честном benchmark.
+Profiling shows that most of the time (59\%) is spent in \texttt{main}, which reads and parses
+the $300\,000$ input commands and runs the \texttt{std::map} part of the benchmark; the tree
+operations take the rest. Removal is the most expensive PATRICIA operation, because after the
+physical removal of a node the back edges have to be restored: about 69\% of the removals hit a
+node without a self loop and need the more complex \texttt{removeNodeWithoutSelfLoop}.
+
+\subsection{Comparison of the original and the fixed version}
+
+The fixes did not change the asymptotic complexity of the tree operations: search, insertion and
+removal still descend the tree by critical bits in the same way. The main benefit of the fixes is
+correct handling of serialization errors and invalid input, and a fair benchmark in which the
+lookup loop cannot be removed by the optimizer.
 
 \pagebreak

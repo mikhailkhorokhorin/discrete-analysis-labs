@@ -1,0 +1,15 @@
+OK
+OK
+OK
+OK
+OK
+NoSuchWord
+OK
+OK: 1
+OK: 2
+NoSuchWord
+ERROR: cannot open file for reading
+OK: 2
+ERROR: cannot open file for writing
+ERROR: invalid file format
+OK: 1

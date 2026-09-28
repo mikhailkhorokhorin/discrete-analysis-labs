@@ -1,19 +1,31 @@
-\section{Выявленные недочёты и исправления}
+\section{Defects found and fixes}
 
-В ходе исследования были устранены следующие проблемы:
+During the research the following problems were found and fixed:
 
 \begin{enumerate}
-    \item Ошибка загрузки отсутствующего файла: метод \texttt{Load} возвращал успех,
-    если файл нельзя было открыть. Исправлено: теперь возвращается ошибка, а программа
-    печатает \texttt{ERROR: cannot load}.
-    \item Повреждённый бинарный файл мог быть принят частично. Исправлено: загрузка
-    выполняется во временное дерево, проверяется полнота каждой записи, а рабочий
-    словарь заменяется только после успешного чтения всего файла.
-    \item Длина ключа сохранялась в \texttt{uint8\_t}. Для ключа длиной 256 символов
-    происходило переполнение. Исправлено: длина хранится в \texttt{uint16\_t}.
-    \item Benchmark не фиксировал результат поиска PATRICIA. Исправлено: добавлен
-    \texttt{volatile}-счётчик успешных поисков, поэтому компилятор не может удалить
-    цикл измерения.
+    \item Loading a missing file: the load operation reported success when the file could not be
+    opened, and all load failures were reported with one generic message. Fixed: file operations
+    throw \texttt{PatriciaError}, and the program prints a specific message, for example
+    \texttt{ERROR: cannot open file for reading}, \texttt{ERROR: invalid file format} or
+    \texttt{ERROR: unsupported file version}.
+    \item The binary file had no header, so an arbitrary or foreign file could be accepted. Fixed:
+    the file starts with the magic header \texttt{PATRICIA}, followed by the format version and
+    the number of entries; all of them are checked during loading.
+    \item A damaged binary file could be accepted partially. Fixed: loading is performed into a
+    temporary tree, the completeness and validity of every entry and the absence of trailing data
+    are checked, and the working dictionary is replaced only after the whole file has been read
+    successfully.
+    \item The key length was stored as \texttt{uint8\_t}, which overflowed for a key of 256
+    characters. Fixed: the length is stored as \texttt{uint16\_t}.
+    \item Write errors were not reported reliably. Fixed: the stream state is checked after writing, and on
+    failure the program prints \texttt{ERROR: failed to write file}.
+    \item Keys were not validated. Fixed: a key must consist of English letters only and be no
+    longer than 256 characters; otherwise \texttt{ERROR: invalid key} is printed.
+    \item Unknown commands starting with \texttt{!} were silently ignored. Fixed: the program prints
+    \texttt{ERROR: unknown command}.
+    \item The benchmark did not use the result of PATRICIA lookups, so the compiler could remove
+    the measured loop. Fixed: the benchmark counts successful lookups and prints the counter, so
+    the loop cannot be optimized away.
 \end{enumerate}
 
 \pagebreak

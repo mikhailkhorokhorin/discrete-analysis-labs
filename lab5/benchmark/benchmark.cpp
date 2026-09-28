@@ -1,93 +1,85 @@
-#include "suffix_tree.hpp"
-
 #include <chrono>
+#include <cstddef>
 #include <iostream>
 #include <set>
 #include <string>
 #include <vector>
 
-using TDuration = std::chrono::microseconds;
-const std::string DURATION_SUFFIX = "us";
-const long long DP_CELL_LIMIT = 25000000LL;
+#include "lcs.hpp"
+#include "suffix_tree.hpp"
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+using Duration = std::chrono::microseconds;
+
+constexpr std::size_t DP_CELL_LIMIT = 25000000;
+
+long long elapsedSince(Clock::time_point start) {
+    return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+std::string readLine(std::istream& input) {
+    std::string line;
+    if (std::getline(input, line) && !line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
+    return line;
+}
+
+LcsResult dynamicProgrammingLcs(const std::string& first, const std::string& second) {
+    std::size_t best = 0;
+    std::set<std::string> found;
+    std::vector<std::size_t> previous(second.size() + 1, 0);
+    std::vector<std::size_t> current(second.size() + 1, 0);
+    for (std::size_t i = 1; i <= first.size(); ++i) {
+        for (std::size_t j = 1; j <= second.size(); ++j) {
+            current[j] = first[i - 1] == second[j - 1] ? previous[j - 1] + 1 : 0;
+            if (current[j] == 0 || current[j] < best) {
+                continue;
+            }
+            if (current[j] > best) {
+                best = current[j];
+                found.clear();
+            }
+            found.insert(first.substr(i - best, best));
+        }
+        previous.swap(current);
+    }
+    return LcsResult{.length = best,
+                     .substrings = std::vector<std::string>(found.begin(), found.end())};
+}
+
+}
 
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    std::string s1;
-    std::string s2;
+    const std::string first = readLine(std::cin);
+    const std::string second = readLine(std::cin);
 
-    if (!std::getline(std::cin, s1)) {
+    auto start = Clock::now();
+    const LcsResult tree = longestCommonSubstrings(first, second);
+    const long long treeTime = elapsedSince(start);
+
+    std::cout << "Suffix tree LCS time: " << treeTime << "us\n";
+    std::cout << "LCS length: " << tree.length << "\n";
+    std::cout << "LCS count: " << tree.substrings.size() << "\n";
+
+    if ((first.size() + 1) * (second.size() + 1) > DP_CELL_LIMIT) {
+        std::cout << "DP LCS skipped: input is too large\n";
         return 0;
     }
-    if (!std::getline(std::cin, s2)) {
-        return 0;
-    }
 
-    if (!s1.empty() && s1.back() == '\r') {
-        s1.pop_back();
-    }
-    if (!s2.empty() && s2.back() == '\r') {
-        s2.pop_back();
-    }
+    start = Clock::now();
+    const LcsResult dynamic = dynamicProgrammingLcs(first, second);
+    const long long dynamicTime = elapsedSince(start);
 
-    int sep = static_cast<int>(s1.size());
-    std::vector<int> combined = BuildCombinedText(s1, s2);
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    TSuffixTree tree(combined);
-    int lcsLen = 0;
-    std::set<std::string> results;
-    tree.FindLcs(sep, lcsLen, results);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    long long elapsed = std::chrono::duration_cast<TDuration>(end - start).count();
-
-    std::cout << "Suffix tree LCS time: " << elapsed << DURATION_SUFFIX << "\n";
-    std::cout << "LCS length: " << lcsLen << "\n";
-    std::cout << "LCS count: " << results.size() << "\n";
-
-    int n1 = static_cast<int>(s1.size());
-    int n2 = static_cast<int>(s2.size());
-    long long dpCells = static_cast<long long>(n1 + 1) * static_cast<long long>(n2 + 1);
-
-    if (dpCells <= DP_CELL_LIMIT) {
-        auto startDp = std::chrono::high_resolution_clock::now();
-
-        int dpBest = 0;
-        std::set<std::string> dpResults;
-        std::vector<std::vector<int>> dp(n1 + 1, std::vector<int>(n2 + 1, 0));
-
-        for (int i = 1; i <= n1; ++i) {
-            for (int j = 1; j <= n2; ++j) {
-                if (s1[i - 1] == s2[j - 1]) {
-                    dp[i][j] = dp[i - 1][j - 1] + 1;
-                    if (dp[i][j] > dpBest) {
-                        dpBest = dp[i][j];
-                        dpResults.clear();
-                    }
-                    if (dp[i][j] == dpBest) {
-                        dpResults.insert(s1.substr(static_cast<size_t>(i - dpBest),
-                                                   static_cast<size_t>(dpBest)));
-                    }
-                }
-            }
-        }
-
-        auto endDp = std::chrono::high_resolution_clock::now();
-        long long elapsedDp = std::chrono::duration_cast<TDuration>(endDp - startDp).count();
-
-        std::cout << "DP LCS time: " << elapsedDp << DURATION_SUFFIX << "\n";
-        std::cout << "DP LCS length: " << dpBest << "\n";
-        std::cout << "DP LCS count: " << dpResults.size() << "\n";
-        std::cout << "Results equal: "
-                  << (lcsLen == dpBest && results == dpResults ? "yes" : "no") << "\n";
-
-        return (lcsLen == dpBest && results == dpResults) ? 0 : 1;
-    }
-
-    std::cout << "DP LCS skipped: input is too large\n";
-
-    return 0;
+    const bool equal = tree == dynamic;
+    std::cout << "DP LCS time: " << dynamicTime << "us\n";
+    std::cout << "DP LCS length: " << dynamic.length << "\n";
+    std::cout << "DP LCS count: " << dynamic.substrings.size() << "\n";
+    std::cout << "Results equal: " << (equal ? "yes" : "no") << "\n";
+    return equal ? 0 : 1;
 }

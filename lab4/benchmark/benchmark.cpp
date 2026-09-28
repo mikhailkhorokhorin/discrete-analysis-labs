@@ -1,99 +1,76 @@
-#include "kmp.hpp"
-
 #include <chrono>
+#include <cstddef>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-using TDuration = std::chrono::microseconds;
-const std::string DURATION_SUFFIX = "us";
+#include "kmp.hpp"
+#include "search.hpp"
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+using Duration = std::chrono::microseconds;
+
+long long elapsedSince(Clock::time_point start) {
+    return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+std::vector<Position> naiveSearch(const std::vector<Token>& pattern, const std::vector<Token>& text,
+                                  const std::vector<Position>& positions) {
+    std::vector<Position> matches;
+    if (pattern.empty() || text.size() < pattern.size()) {
+        return matches;
+    }
+    for (std::size_t i = 0; i + pattern.size() <= text.size(); ++i) {
+        bool found = true;
+        for (std::size_t j = 0; j < pattern.size() && found; ++j) {
+            found = text[i + j] == pattern[j];
+        }
+        if (found) {
+            matches.push_back(positions[i]);
+        }
+    }
+    return matches;
+}
+
+}
 
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    std::vector<TToken> pattern;
-    std::string patternLine;
-
-    if (!std::getline(std::cin, patternLine)) {
+    std::string line;
+    if (!std::getline(std::cin, line)) {
         return 0;
     }
+    const std::vector<Token> pattern = parseTokens(line);
 
-    if (!patternLine.empty() && patternLine.back() == '\r') {
-        patternLine.pop_back();
-    }
-
-    {
-        std::istringstream ss(patternLine);
-        TToken token;
-        while (ss >> token) {
-            pattern.push_back(token);
-        }
-    }
-
-    std::vector<TToken> text;
-    std::vector<TPosition> positions;
-
-    std::string line;
-    int lineNumber = 1;
-
+    std::vector<Token> text;
+    std::vector<Position> positions;
+    std::size_t lineNumber = 0;
     while (std::getline(std::cin, line)) {
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-
-        std::istringstream ss(line);
-        TToken token;
-        int wordNumber = 1;
-
-        while (ss >> token) {
-            text.push_back(token);
-            positions.emplace_back(lineNumber, wordNumber);
-            ++wordNumber;
-        }
-
         ++lineNumber;
-    }
-
-    std::vector<TPosition> kmpResults;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    kmpResults = KmpSearch(pattern, text, positions);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    long long kmpTime = std::chrono::duration_cast<TDuration>(end - start).count();
-
-    std::vector<TPosition> naiveResults;
-
-    start = std::chrono::high_resolution_clock::now();
-
-    int patternLen = static_cast<int>(pattern.size());
-    int textLen = static_cast<int>(text.size());
-
-    if (patternLen > 0) {
-        for (int i = 0; i <= textLen - patternLen; ++i) {
-            bool found = true;
-            for (int j = 0; j < patternLen && found; ++j) {
-                if (text[i + j] != pattern[j]) {
-                    found = false;
-                }
-            }
-            if (found) {
-                naiveResults.push_back(positions[i]);
-            }
+        std::size_t wordNumber = 0;
+        for (const Token token : parseTokens(line)) {
+            text.push_back(token);
+            positions.push_back(Position{.line = lineNumber, .word = ++wordNumber});
         }
     }
 
-    end = std::chrono::high_resolution_clock::now();
-    long long naiveTime = std::chrono::duration_cast<TDuration>(end - start).count();
+    auto start = Clock::now();
+    const std::vector<Position> kmpResults = kmpSearch(pattern, text, positions);
+    const long long kmpTime = elapsedSince(start);
 
-    std::cout << "KMP time: " << kmpTime << DURATION_SUFFIX << "\n";
-    std::cout << "Naive search time: " << naiveTime << DURATION_SUFFIX << "\n";
+    start = Clock::now();
+    const std::vector<Position> naiveResults = naiveSearch(pattern, text, positions);
+    const long long naiveTime = elapsedSince(start);
+
+    const bool equal = kmpResults == naiveResults;
+    std::cout << "KMP time: " << kmpTime << "us\n";
+    std::cout << "Naive search time: " << naiveTime << "us\n";
     std::cout << "KMP matches: " << kmpResults.size() << "\n";
     std::cout << "Naive matches: " << naiveResults.size() << "\n";
-    std::cout << "Results equal: " << (kmpResults == naiveResults ? "yes" : "no") << "\n";
-
-    return kmpResults == naiveResults ? 0 : 1;
+    std::cout << "Results equal: " << (equal ? "yes" : "no") << "\n";
+    return equal ? 0 : 1;
 }

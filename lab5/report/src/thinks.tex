@@ -1,17 +1,17 @@
-\section{Выводы}
+\section{Conclusions}
 
-Выполнив данную лабораторную работу по курсу \enquote{Дискретный анализ}, я реализовал
-поиск наибольшей общей подстроки двух строк с помощью обобщённого суффиксного дерева.
-Основная часть работы заключалась в реализации онлайн-алгоритма Укконена: активной точки,
-остатка необработанных суффиксов, расщепления рёбер и суффиксных ссылок.
+By completing this laboratory work for the course \enquote{Discrete Analysis}, I implemented
+the search for the longest common substring of two strings using a generalized suffix tree.
+The main part of the work was the implementation of Ukkonen's online algorithm: the active point,
+the counter of unprocessed suffixes, edge splitting and suffix links.
 
-Для поиска ответа дерево обходится в глубину, а каждая вершина помечается по наличию
-суффиксов первой и второй строки в её поддереве. Самая глубокая вершина с покрытием обеих
-строк задаёт длину ответа, а множество \texttt{std::set} обеспечивает вывод без повторов
-и в лексикографическом порядке.
+To find the answer, the tree is traversed iteratively with an explicit stack, and every node is
+marked according to the presence of suffixes of the first and second strings in its subtree.
+The deepest node covered by both strings gives the length of the answer, and \texttt{std::set}
+ensures that the output has no duplicates and is in lexicographic order.
 
-Тестирование подтвердило преимущество суффиксного дерева над динамическим программированием:
-на строках длины 4\,000 дерево работает примерно в \textbf{30 раз} быстрее, а на больших
-размерах DP уже не используется из-за квадратичной памяти.
+Testing confirmed the advantage of the suffix tree over dynamic programming: on strings of length
+4\,000 the tree is about \textbf{30 times} faster, and on larger sizes the DP is no longer used
+because of its quadratic running time.
 
 \pagebreak

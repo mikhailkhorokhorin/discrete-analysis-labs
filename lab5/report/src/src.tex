@@ -1,127 +1,87 @@
-\section{Описание}
+\section{Description}
 
-Требуется найти все наибольшие общие подстроки двух строк. Для этого строится обобщённое
-суффиксное дерево для строки $S_1 \# S_2 \$$, где вместо обычных символов-разделителей
-в реализации используются специальные коды 256 и 257. Поэтому служебные разделители
-не могут совпасть с символами входных строк.
+The task is to find all longest common substrings of two strings. To do this, a generalized
+suffix tree is built for the string $S_1 \# S_2 \$$, where instead of ordinary separator
+characters the implementation uses the special codes 256 and 257
+(\texttt{FIRST\_SEPARATOR} and \texttt{SECOND\_SEPARATOR}). Therefore the service separators
+cannot coincide with any character of the input strings.
 
-Суффиксное дерево строится онлайн-алгоритмом Укконена за линейное время. После построения
-выполняется обход дерева в глубину. Для каждой вершины определяется, есть ли в её поддереве
-суффиксы первой строки и суффиксы второй строки. Если оба типа суффиксов присутствуют,
-то строка, соответствующая пути от корня до этой вершины, является общей подстрокой.
-Самая глубокая такая вершина задаёт длину наибольшей общей подстроки.
-
-\pagebreak
-
-\section{Исходный код}
-
-\subsection{Структура дерева}
-
-Каждая вершина хранит переходы по символам, суффиксную ссылку и границы ребра в общей
-строке. Для листьев правый конец ребра равен специальному значению \texttt{LEAF\_END};
-фактический конец листового ребра задаётся текущей глобальной переменной \texttt{leafEnd}.
-
-\begin{lstlisting}[language=C++, caption={Вершина суффиксного дерева}]
-struct TNode {
-    std::map<int, int> children;
-    int suffixLink;
-    int start;
-    int end;
-
-    TNode(int start, int end);
-};
-\end{lstlisting}
-
-Алфавит дерева целочисленный. Обычные байты входных строк попадают в диапазон
-$[0,255]$, а разделители имеют значения 256 и 257.
-
-\begin{lstlisting}[language=C++, caption={Построение общей строки}]
-std::vector<int> BuildCombinedText(
-    const std::string &first,
-    const std::string &second
-) {
-    std::vector<int> result;
-    for (unsigned char ch : first) {
-        result.push_back(static_cast<int>(ch));
-    }
-    result.push_back(FIRST_SEPARATOR);
-    for (unsigned char ch : second) {
-        result.push_back(static_cast<int>(ch));
-    }
-    result.push_back(SECOND_SEPARATOR);
-    return result;
-}
-\end{lstlisting}
-
-\subsection{Алгоритм Укконена}
-
-При добавлении очередного символа поддерживаются активная вершина \texttt{activeNode},
-активное ребро \texttt{activeEdge}, активная длина \texttt{activeLength} и число
-оставшихся суффиксов \texttt{remaining}. Если нужного перехода нет, создаётся лист.
-Если переход есть, но следующий символ на ребре отличается, ребро расщепляется и
-создаётся внутренняя вершина. Суффиксные ссылки позволяют не начинать обработку каждого
-суффикса заново.
-
-\begin{lstlisting}[language=C++, caption={Основной фрагмент Extend}]
-if (next == NO_CHILD) {
-    SetChild(activeNode, edgeCh, NewNode(pos, LEAF_END));
-} else {
-    int edgeLength = EdgeLen(next);
-    if (activeLength >= edgeLength) {
-        activeEdge += edgeLength;
-        activeLength -= edgeLength;
-        activeNode = next;
-        continue;
-    }
-
-    int splitCh = text[nodes[next].start + activeLength];
-    int curCh = text[pos];
-    if (splitCh == curCh) {
-        ++activeLength;
-        break;
-    }
-
-    int split = NewNode(
-        nodes[next].start,
-        nodes[next].start + activeLength - 1
-    );
-    SetChild(activeNode, edgeCh, split);
-    SetChild(split, curCh, NewNode(pos, LEAF_END));
-    nodes[next].start += activeLength;
-    SetChild(split, splitCh, next);
-}
-\end{lstlisting}
-
-\subsection{Поиск ответа}
-
-Функция \texttt{Dfs} возвращает маску покрытия поддерева: есть ли в нём суффиксы первой
-строки, второй строки или обеих строк. Для восстановления самой подстроки дополнительно
-передаётся позиция одного суффикса из первой строки. Если вершина покрыта обеими строками,
-её глубина сравнивается с текущим максимумом, а соответствующая строка добавляется
-в \texttt{std::set}. Множество автоматически удаляет повторы и сортирует ответы
-лексикографически.
-
-\begin{lstlisting}[language=C++, caption={Обработка общей подстроки в DFS}]
-if (coverage == COV_BOTH && idx != ROOT && depth > 0
-    && firstStart != NO_CHILD && firstStart + depth <= sep) {
-    if (depth > bestLen) {
-        bestLen = depth;
-        results.clear();
-    }
-    if (depth == bestLen) {
-        results.insert(MakeString(firstStart, depth));
-    }
-}
-\end{lstlisting}
+The suffix tree is built by Ukkonen's online algorithm. The transitions of a node are stored in
+\texttt{std::map}, so every step costs $O(\log \sigma)$ and the whole construction takes
+$O(n \log \sigma)$, where $n = |S_1| + |S_2| + 2$ and $\sigma \le 258$ is the size of the alphabet.
+After the construction
+the tree is traversed. For every node it is determined whether its subtree contains suffixes
+of the first string and suffixes of the second string. If both kinds of suffixes are present,
+the string spelled by the path from the root to this node is a common substring.
+The deepest such node gives the length of the longest common substring.
 
 \pagebreak
 
-\section{Консоль}
+\section{Source code}
+
+\subsection{Tree structure}
+
+The class \texttt{SuffixTree} stores its nodes in a vector. Every node (the private structure
+\texttt{Node}) stores the transitions by symbols (\texttt{children}), the suffix link
+(\texttt{suffixLink}) and the bounds of the incoming edge in the combined string
+(\texttt{start}, \texttt{end}). For leaves the right end of the edge equals the special value
+\texttt{LEAF\_END}; the actual end of a leaf edge is given by the current member
+\texttt{leafEnd\_}. New nodes are created by \texttt{newNode}, the length of an edge is computed
+by \texttt{edgeLength}, and \texttt{child} returns the transition by a symbol or \texttt{NONE}.
+
+The alphabet of the tree consists of integers. Ordinary bytes of the input strings fall into
+the range $[0,255]$, and the separators have the values 256 and 257. The combined text is
+built by the function \texttt{buildCombinedText}.
+
+\subsection{Ukkonen's algorithm}
+
+When the next symbol is added by \texttt{extend}, the algorithm maintains the active node
+\texttt{activeNode\_}, the active edge \texttt{activeEdge\_}, the active length
+\texttt{activeLength\_} and the number of remaining suffixes \texttt{remaining\_}. If the required
+transition is missing, a leaf is created. If the transition exists but the next symbol on the
+edge differs, the edge is split and an internal node is created. Suffix links make it possible
+not to start processing every suffix from scratch.
+
+\subsection{Finding the answer}
+
+The method \texttt{findLcs(separator)} returns the structure \texttt{LcsResult} with the length
+of the answer (\texttt{length}) and the sorted list of substrings (\texttt{substrings}).
+Instead of a recursive depth-first search, which overflowed the call stack on inputs such as
+\texttt{aaaa\ldots}, the traversal is iterative and uses an explicit stack. First, the nodes are
+visited in preorder; for every node its parent and its string depth are recorded. Then the nodes
+are processed in reverse order, so every node is handled after all its descendants.
+
+For every node a coverage mask is aggregated: whether its subtree contains suffixes of the first
+string, of the second string, or of both strings. To restore the substring itself, the start
+position of one suffix of the first string (\texttt{firstStart}) is propagated to the parent as
+well. If an internal node is covered by both strings, its depth is compared with the current
+maximum, and the corresponding string, built by \texttt{makeString}, is added to a
+\texttt{std::set}. The set removes duplicates automatically and sorts the answers
+lexicographically.
+
+The function \texttt{longestCommonSubstrings} builds the tree for two non-empty strings and calls
+\texttt{findLcs}; if one of the strings is empty, the answer has length 0. The function
+\texttt{runLcs} reads two lines (a missing second line is treated as an empty string, so the
+program prints 0) and writes the answer. The \texttt{main} function only calls \texttt{runLcs}.
+
+\lstinputlisting[caption={include/suffix\_tree.hpp}]{../include/suffix_tree.hpp}
+
+\lstinputlisting[caption={src/suffix\_tree.cpp}]{../src/suffix_tree.cpp}
+
+\lstinputlisting[caption={include/lcs.hpp}]{../include/lcs.hpp}
+
+\lstinputlisting[caption={src/lcs.cpp}]{../src/lcs.cpp}
+
+\needspace{18\baselineskip}
+\lstinputlisting[caption={app/main.cpp}]{../app/main.cpp}
+
+\pagebreak
+
+\section{Console}
 
 \begin{alltt}
-# cmake -B build -DCMAKE_BUILD_TYPE=Release
-# cmake --build build
-# ./build/lab5/lab5_main
+# make build PRESET=release
+# build/release/lab5/lab5_main
 xabay
 xabcbay
 3

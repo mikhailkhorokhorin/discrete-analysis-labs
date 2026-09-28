@@ -1,0 +1,15 @@
++ alpha 1
++ Beta 2
+! Save dict.bin
+- alpha
++ gamma 3
+alpha
+! Load dict.bin
+alpha
+BETA
+gamma
+! Load missing.bin
+beta
+! Save .
+! Load .
+alpha

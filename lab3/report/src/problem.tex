@@ -1,35 +1,260 @@
-\CWHeader{Лабораторные работы \textnumero 2 и \textnumero 3}
+\CWHeader{Laboratory works No. 2 and No. 3: PATRICIA and Quality Research}
 
-\section*{Лабораторная работа \textnumero 2}
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+Time limit & 15 seconds \\
+\hline
+Memory limit & 512 MB \\
+\hline
+Input & standard input or \texttt{input.txt} \\
+\hline
+Output & standard output or \texttt{output.txt} \\
+\hline
+\end{tabular}
+\end{table}
 
-Вариант структуры данных: PATRICIA.
+\section*{Laboratory work No. 2}
 
-Необходимо создать программную библиотеку, реализующую словарь на основе дерева
-PATRICIA. В словаре каждому ключу, представляющему собой регистронезависимую
-последовательность букв английского алфавита длиной не более 256 символов,
-поставлен в соответствие номер от 0 до $2^{64}-1$.
+\CWProblem{
+You need to create a program library implementing the specified data structure, on the basis of
+which to develop a dictionary program. In the dictionary, each key, which is a case-insensitive
+sequence of letters of the English alphabet of no more than 256 characters, is associated with a
+number from 0 to $2^{64} - 1$. Different words can be assigned the same number.
+}
 
-Программа должна поддерживать добавление, удаление, поиск, сохранение словаря в
-бинарном виде и загрузку словаря из файла. При ошибках ввода-вывода или повреждённом
-формате внешнего файла программа должна печатать строку, начинающуюся с
-\texttt{ERROR:}, а рабочий словарь должен оставаться в корректном состоянии.
+The program must process lines of the input file until its end. Each line can have the following
+format:
 
-\section*{Лабораторная работа \textnumero 3}
-
-Для реализации словаря из лабораторной работы \textnumero 2 необходимо провести
-исследование скорости выполнения и потребления оперативной памяти. В случае выявления
-ошибок или явных недочётов требуется их исправить.
-
-Результатом лабораторной работы является отчёт, содержащий дневник выполнения
-работы, выводы о найденных недочётах, сравнение исправленной программы с предыдущей
-версией и общие выводы о выполненной работе.
-
-Для исследования использовались:
 \begin{itemize}
-    \item \texttt{gprof}~--- профилирование времени выполнения;
-    \item Valgrind Memcheck~--- проверка ошибок работы с памятью и утечек;
-    \item Valgrind Massif~--- оценка пикового потребления памяти;
-    \item собственный генератор тестов и benchmark из лабораторной работы \textnumero 2.
+    \item \texttt{+ word 34}~--- add the word \texttt{word} with number 34 to the dictionary. The
+    program must output \texttt{OK} if the operation was successful, \texttt{Exist} if the word is
+    already in the dictionary.
+    \item \texttt{- word}~--- remove the word \texttt{word} from the dictionary. The program must
+    output \texttt{OK} if the word existed and was removed, \texttt{NoSuchWord} if the word was not
+    found in the dictionary.
+    \item \texttt{word}~--- find the word \texttt{word} in the dictionary. The program must output
+    \texttt{OK: 34} if the word was found. If the word was not found in the dictionary, output
+    \texttt{NoSuchWord}.
+    \item \texttt{! Save /path/to/file}~--- save the dictionary to a file in binary compact
+    representation, at the path specified by the command parameter. If successful, the program
+    must output \texttt{OK}; if the operation fails, output a description of the error.
+    \item \texttt{! Load /path/to/file}~--- load the dictionary from a file. It is assumed that the
+    file was previously prepared using the \texttt{Save} command. If successful, the program must
+    output \texttt{OK} and the loaded dictionary replaces the current one; if unsuccessful,
+    diagnostics must be output and the working dictionary must remain unchanged.
 \end{itemize}
+
+For all operations, if a system error occurs, the program must output a line starting with
+\texttt{ERROR:} and describing the error in English.
+
+The difference between variants lies only in the data structures used.
+
+{\bfseries Data structure variant:} PATRICIA.
+
+\section*{Laboratory work No. 3: A. Software Quality Research}
+
+\CWProblem{
+For the dictionary implementation from the previous laboratory work, it is necessary to
+investigate execution speed and RAM consumption. If errors or obvious shortcomings are found, they
+must be fixed.
+}
+
+The result of the work is a report containing:
+
+\begin{itemize}
+    \item a work diary describing what was done and when, which tools were used, and what results
+    were achieved at each step of the laboratory work;
+    \item conclusions about the shortcomings found;
+    \item comparison of the fixed program with the previous version;
+    \item general conclusions about the completed laboratory work and the experience gained.
+\end{itemize}
+
+The minimum set of tools used must include the \texttt{gprof} utility and the \texttt{dmalloc}
+library. However, they may be replaced with any similar or more advanced tools, for example
+Valgrind or Shark, and additional tools may also be used, for example \texttt{gcov}.
+
+\subsection*{Additional information}
+
+\subsubsection*{gprof}
+
+The \texttt{gprof} utility should be studied independently using the operational documentation of
+the Unix operating system.
+
+\subsubsection*{dmalloc}
+
+Below is a short description of how to use it for a small test program.
+
+Suppose a small program is written with two dynamic memory usage errors that cannot be checked at
+compile time and can only be detected at run time:
+
+\begin{verbatim}
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef DMALLOC
+#include "dmalloc.h"
+#endif
+
+void *foo() {
+    char *p = malloc(1023);
+    p[1023] = '\0';
+    return p;
+}
+
+int main() {
+    foo();
+    return 0;
+}
+\end{verbatim}
+
+The program has two errors:
+
+\begin{enumerate}
+    \item In line 10, the program accesses the 1024th element of the dynamic array \texttt{p}, even
+    though only 1023 elements were allocated. When the program is executed, this error will most
+    likely not be detected, because the actual allocated memory size is usually aligned to the page
+    size and therefore will be larger than 1023 elements.
+    \item The memory allocated in line 9 is never freed.
+\end{enumerate}
+
+If the program is compiled and run, most likely no problems will occur either during compilation
+or during execution:
+
+\begin{verbatim}
+gcc -Wall dmalloc-test.c -o dtest
+./dtest
+\end{verbatim}
+
+To use the \texttt{dmalloc} library, the special header file \texttt{dmalloc.h} must be included in
+the program. It replaces calls to memory allocation functions with its own versions. The
+\texttt{DMALLOC} macro must also be defined to enable the main functionality of the library. In
+addition, the \texttt{DMALLOC\_FUNC\_CHECK} macro can be defined to enable additional checking of
+parameters passed to various functions from the C standard library. Finally, the \texttt{dmalloc}
+library must be linked during compilation.
+
+Thus, compilation can be performed as follows:
+
+\begin{verbatim}
+gcc -Wall -DDMALLOC -DDMALLOC_FUNC_CHECK \
+    -I/usr/local/include -L/usr/local/lib dmalloc-test.c \
+    -o dtest -ldmalloc
+\end{verbatim}
+
+Before running the program under investigation, the \texttt{DMALLOC\_OPTIONS} environment variable
+must be defined. It passes information about how the library should work. The full list of options
+and their meaning should be found in the library documentation. To correctly set the environment
+in the \texttt{bash} command interpreter, the following command can be used:
+
+\begin{verbatim}
+eval `command dmalloc -b -l logfile -i 100 low`
+\end{verbatim}
+
+In this case, the check report will be written to the file \texttt{logfile}.
+
+Now, if the program is run, it will terminate abnormally:
+
+\begin{verbatim}
+./dtest
+\end{verbatim}
+
+\begin{verbatim}
+debug-malloc library: dumping program, fatal error
+   Error: failed OVER picket-fence magic-number check (err 27)
+Abort trap: 6 (core dumped)
+\end{verbatim}
+
+Thus, the \texttt{dmalloc} library detected an out-of-bounds access. The abnormal program
+termination also made it possible to create a core dump, which can be examined using the
+\texttt{gdb} debugger.
+
+If the source program is modified by fixing the out-of-bounds access, for example by replacing
+index 1023 with 1022, the program will run normally. The report will look approximately as
+follows:
+
+{\scriptsize
+\begin{alltt}
+1192785155: 1: Dmalloc version '5.5.2' from 'http://dmalloc.com/'
+1192785155: 1: flags = 0x4e48503, logfile 'logfile'
+1192785155: 1: interval = 100, addr = 0, seen # = 0, limit = 0
+1192785155: 1: starting time = 1192785155
+1192785155: 1: process pid = 23403
+1192785155: 1: Dumping Chunk Statistics:
+1192785155: 1: basic-block 8192 bytes, alignment 8 bytes
+1192785155: 1: heap address range: 0x16005a000 to 0x160060000, 24576 bytes
+1192785155: 1:
+1192785155: 1:
+1192785155: 1:
+1192785155: 1: heap checked 1
+1192785155: 1: alloc calls: malloc 1, calloc 0, realloc 0, free 0
+1192785155: 1: alloc calls: recalloc 0, memalign 0, valloc 0
+1192785155: 1: alloc calls: new 0, delete 0
+ user blocks: 1 blocks, 7167 bytes (29\%)
+admin blocks: 2 blocks, 16384 bytes (66\%)
+total blocks: 3 blocks, 24576 bytes
+1192785155: 1:   current memory in use: 1023 bytes (1 pnts)
+1192785155: 1:  total memory allocated: 1023 bytes (1 pnts)
+1192785155: 1:  max in use at one time: 1023 bytes (1 pnts)
+1192785155: 1: max alloced with 1 call: 1023 bytes
+1192785155: 1: max unused memory space: 1025 bytes (50\%)
+1192785155: 1: top 10 allocations:
+1192785155: 1: total-size count in-use-size count source
+1192785155: 1: 1023 1 1023 1 dmalloc-test.c:9
+1192785155: 1: 1023 1 1023 1 Total of 1
+1192785155: 1: Dumping Not-Freed Pointers Changed Since Start:
+1192785155: 1: not freed: '0x16005b808|s1' (1023 bytes) from 'dmalloc-test.c:9'
+1192785155: 1: total-size count source
+1192785155: 1: 1023 1 dmalloc-test.c:9
+1192785155: 1: 1023 1 Total of 1
+1192785155: 1: ending time = 1192785155, elapsed since start = 0:00:00
+\end{alltt}
+}
+
+At the end of the report there is a \texttt{Dumping Not-Freed Pointers} section, where it can be
+seen that one memory block of 1023 bytes, allocated in line 9, was not freed before the program
+finished. Thus, memory leaks in programs can be tracked.
+
+Before performing the laboratory work, it is strongly recommended to independently study the
+documentation for the \texttt{dmalloc} library. Using additional options not described above will
+improve the impression of the completed work.
+
+In this laboratory work, \texttt{dmalloc} is replaced by more advanced tools: Valgrind Memcheck and
+Valgrind Massif. The research also uses \texttt{gprof}, a test generator, and a benchmark that
+compares PATRICIA with \texttt{std::map}.
+
+\subsection*{Input format}
+
+Each non-empty line of the input contains one of the commands described above.
+
+\subsection*{Output format}
+
+For each input line, the program outputs one response line as specified above.
+
+\subsection*{Example}
+
+Input:
+
+\begin{alltt}
++ a 1
++ A 2
++ \seqsplit{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa} 18446744073709551615
+\seqsplit{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+A
+- A
+a
+\end{alltt}
+
+Output:
+
+\begin{alltt}
+OK
+Exist
+OK
+OK: 18446744073709551615
+OK: 1
+OK
+NoSuchWord
+\end{alltt}
 
 \pagebreak

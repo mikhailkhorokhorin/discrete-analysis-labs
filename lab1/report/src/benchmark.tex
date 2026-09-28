@@ -1,23 +1,23 @@
-\section{Тест производительности}
+\section{Performance test}
 
-\subsection{Методика}
+\subsection{Method}
 
-Для сравнения создаются два одинаковых массива из случайно сгенерированных дат.
-Один сортируется реализованным алгоритмом \texttt{RadixSort}, второй~---
-стандартной функцией \texttt{std::stable\_sort} из STL. Время каждого алгоритма
-измеряется отдельно с помощью \texttt{std::chrono::high\_resolution\_clock}.
-Генерация данных и ввод-вывод в замер не входят.
+For the comparison, two identical arrays of randomly generated dates are created
+(\nolinkurl{lab1/benchmark/benchmark.cpp}). One of them is sorted by the implemented
+\texttt{radixSort}, the other by the standard function \texttt{std::stable\_sort} from the STL.
+The time of each algorithm is measured separately with \texttt{std::chrono::steady\_clock}.
+Data generation and input/output are not included in the measurement.
 
-Тест запускается на пяти размерах от $100$ до $10^6$ элементов.
+The test is run for five sizes from $100$ to $10^6$ elements.
 
-\subsection{Результаты}
+\subsection{Results}
 
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|r|r|r|}
 \hline
 \rowcolor{lightgray}
-$N$ & \texttt{RadixSort}, мкс & \texttt{std::stable\_sort}, мкс \\
+$N$ & \texttt{radixSort}, $\mu$s & \texttt{std::stable\_sort}, $\mu$s \\
 \hline
 100 & 8 & 7 \\
 \hline
@@ -30,42 +30,48 @@ $N$ & \texttt{RadixSort}, мкс & \texttt{std::stable\_sort}, мкс \\
 1\,000\,000 & 140\,767 & 191\,842 \\
 \hline
 \end{tabular}
-\caption{Время сортировки в микросекундах}
+\caption{Sorting time in microseconds}
 \end{table}
 
 \begin{alltt}
-# python3 lab1/benchmark/generator.py 100 && ./build/lab1/lab1_benchmark < tests.txt
+# make build PRESET=release
+# python3 lab1/benchmark/generator.py 100 && \textbackslash{}
+  build/release/lab1/lab1_benchmark < lab1/benchmark/tests.txt
 Radix sort time: 8us
 STL stable sort time: 7us
-# python3 lab1/benchmark/generator.py 1000 && ./build/lab1/lab1_benchmark < tests.txt
+# python3 lab1/benchmark/generator.py 1000 && \textbackslash{}
+  build/release/lab1/lab1_benchmark < lab1/benchmark/tests.txt
 Radix sort time: 66us
 STL stable sort time: 74us
-# python3 lab1/benchmark/generator.py 10000 && ./build/lab1/lab1_benchmark < tests.txt
+# python3 lab1/benchmark/generator.py 10000 && \textbackslash{}
+  build/release/lab1/lab1_benchmark < lab1/benchmark/tests.txt
 Radix sort time: 831us
 STL stable sort time: 1133us
-# python3 lab1/benchmark/generator.py 100000 && ./build/lab1/lab1_benchmark < tests.txt
+# python3 lab1/benchmark/generator.py 100000 && \textbackslash{}
+  build/release/lab1/lab1_benchmark < lab1/benchmark/tests.txt
 Radix sort time: 14291us
 STL stable sort time: 19226us
-# python3 lab1/benchmark/generator.py 1000000 && ./build/lab1/lab1_benchmark < tests.txt
+# python3 lab1/benchmark/generator.py 1000000 && \textbackslash{}
+  build/release/lab1/lab1_benchmark < lab1/benchmark/tests.txt
 Radix sort time: 140767us
 STL stable sort time: 191842us
 \end{alltt}
 
-\subsection{Анализ результатов}
+\subsection{Analysis of the results}
 
-На малых объёмах ($N = 100$) оба алгоритма работают за доли миллисекунды и накладные
-расходы на системный вызов сопоставимы с полезной работой, поэтому разница незначительна.
+For small inputs ($N = 100$) both algorithms finish in a fraction of a millisecond, and the
+overhead is comparable to the useful work, so the difference is negligible.
 
-Начиная с $N = 1\,000$ поразрядная сортировка стабильно опережает \texttt{std::stable\_sort}.
-Это соответствует теоретическим оценкам: сложность \texttt{RadixSort} составляет $O(n \cdot k)$,
-где $k = 4$~--- фиксированное число байт в \texttt{uint32\_t}, то есть фактически $O(n)$.
-Сложность \texttt{std::stable\_sort} равна $O(n \log n)$.
+Starting from $N = 1\,000$, radix sort is consistently faster than \texttt{std::stable\_sort}.
+This agrees with the theoretical estimates: the complexity of \texttt{radixSort} is $O(n \cdot k)$,
+where $k = 4$ is the fixed number of bytes in \texttt{std::uint32\_t}, that is, effectively $O(n)$.
+The complexity of \texttt{std::stable\_sort} is $O(n \log n)$.
 
-На $N = 10^6$ поразрядная сортировка работает в \textbf{1.36 раза} быстрее (140\,767~мкс
-против 191\,842~мкс). Разрыв не такой большой, как ожидался от линейного алгоритма,
-поскольку \texttt{RadixSort} делает 4 полных прохода по массиву (итого 4 прохода по памяти),
-а \texttt{std::stable\_sort} использует блочные операции, дружественные кэшу.
-Тем не менее линейная асимптотика подтверждается: при увеличении $N$ в 10 раз время
-\texttt{RadixSort} растёт примерно в 10 раз, тогда как \texttt{std::stable\_sort}~--- чуть быстрее.
+For $N = 10^6$ radix sort is \textbf{1.36 times} faster (140\,767~$\mu$s
+versus 191\,842~$\mu$s). The gap is smaller than one might expect from a linear algorithm,
+because \texttt{radixSort} makes 4 full passes over the array (4 passes over memory in total),
+while \texttt{std::stable\_sort} uses cache-friendly block operations.
+Nevertheless, the linear asymptotics is confirmed: when $N$ grows 10 times, the time of
+\texttt{radixSort} grows about 10 times, while \texttt{std::stable\_sort} grows slightly faster.
 
 \pagebreak

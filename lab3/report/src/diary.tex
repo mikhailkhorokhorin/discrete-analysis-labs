@@ -1,17 +1,18 @@
-\section{Дневник выполнения работы}
+\section{Work diary}
 
 \begin{itemize}
-    \item Этап 1: Изучение PATRICIA-дерева. Разбор критических битов, обратных рёбер
-    и узла-заголовка.
-    \item Этап 2: Реализация словаря. Добавлены операции \texttt{Insert}, \texttt{Find},
-    \texttt{Remove}, регистронезависимая обработка ключей и бинарная сериализация.
-    \item Этап 3: Подготовка benchmark и генератора. Проведено сравнение PATRICIA
-    с \texttt{std::map} на наборах от $1\,000$ до $1\,000\,000$ ключей.
-    \item Этап 4: Исследование качества. Использованы \texttt{gprof}, Valgrind Memcheck
-    и Valgrind Massif; получены данные по времени выполнения и памяти.
-    \item Этап 5: Исправление недочётов. Исправлены ошибки загрузки файла, проверки
-    бинарного формата, сохранения ключа длиной 256 и замера поиска в benchmark.
-    \item Этап 6: Пересборка отчёта и контрольная проверка актуальности результатов.
+    \item Stage 1: Study of the PATRICIA tree. Analysis of critical bits, back edges and the header
+    node.
+    \item Stage 2: Implementation of the dictionary. The operations \texttt{insert}, \texttt{find},
+    \texttt{remove}, case-insensitive key handling and binary serialization were added.
+    \item Stage 3: Preparation of the benchmark and the test generator
+    (\texttt{lab3/benchmark/generator.py}). PATRICIA was compared with \texttt{std::map} on sets of
+    $1\,000$ to $1\,000\,000$ keys.
+    \item Stage 4: Quality research. \texttt{gprof}, Valgrind Memcheck and Valgrind Massif were
+    used; data on execution time and memory were obtained.
+    \item Stage 5: Fixing the defects. Errors in file loading, binary format checking, saving a key
+    of length 256 and the lookup measurement in the benchmark were fixed.
+    \item Stage 6: Rebuilding the report and a final check that the results are up to date.
 \end{itemize}
 
 \pagebreak

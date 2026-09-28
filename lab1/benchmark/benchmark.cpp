@@ -1,45 +1,41 @@
-#include "main.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <iostream>
-#include <string>
 
-using TDuration = std::chrono::microseconds;
-const std::string DURATION_PREFIX = "us";
+#include "pair.hpp"
+#include "radix_sort.hpp"
+#include "vector.hpp"
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+using Duration = std::chrono::microseconds;
+
+long long elapsedSince(Clock::time_point start) {
+    return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+}
 
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    TVector<TPair> data;
-    std::string line;
+    Vector<Pair> data = readPairs(std::cin);
+    Vector<Pair> dataStl = data;
 
-    while (std::getline(std::cin, line)) {
-        if (!line.empty()) {
-            data.PushBack(TPair(line));
-        }
+    auto start = Clock::now();
+    radixSort(data);
+    const long long radixTime = elapsedSince(start);
+
+    start = Clock::now();
+    if (!dataStl.empty()) {
+        std::stable_sort(dataStl.data(), dataStl.data() + dataStl.size(),
+                         [](const Pair& lhs, const Pair& rhs) { return lhs.key < rhs.key; });
     }
+    const long long stlTime = elapsedSince(start);
 
-    TVector<TPair> dataSTL = data;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    RadixSort(data);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    long long radixTime = std::chrono::duration_cast<TDuration>(end - start).count();
-
-    start = std::chrono::high_resolution_clock::now();
-
-    std::stable_sort(&dataSTL[0], &dataSTL[0] + dataSTL.Size(),
-                     [](const TPair &a, const TPair &b) { return a.key < b.key; });
-
-    end = std::chrono::high_resolution_clock::now();
-    long long stlTime = std::chrono::duration_cast<TDuration>(end - start).count();
-
-    std::cout << "Radix sort time: " << radixTime << DURATION_PREFIX << "\n";
-    std::cout << "STL stable sort time: " << stlTime << DURATION_PREFIX << "\n";
-
+    std::cout << "Radix sort time: " << radixTime << "us\n";
+    std::cout << "STL stable sort time: " << stlTime << "us\n";
     return 0;
 }

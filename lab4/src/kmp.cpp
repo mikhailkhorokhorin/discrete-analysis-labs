@@ -1,52 +1,64 @@
 #include "kmp.hpp"
 
-std::vector<int> BuildPrefixFunction(const std::vector<TToken> &pattern) {
-    int patternLen = static_cast<int>(pattern.size());
-    std::vector<int> prefixFunc(patternLen, 0);
+#include <cstddef>
+#include <optional>
+#include <utility>
+#include <vector>
 
-    for (int i = 1; i < patternLen; ++i) {
-        int k = prefixFunc[i - 1];
-        while (k > 0 && pattern[i] != pattern[k]) {
-            k = prefixFunc[k - 1];
+std::vector<std::size_t> buildPrefixFunction(const std::vector<Token>& pattern) {
+    std::vector<std::size_t> prefix(pattern.size(), 0);
+    for (std::size_t i = 1; i < pattern.size(); ++i) {
+        std::size_t length = prefix[i - 1];
+        while (length > 0 && pattern[i] != pattern[length]) {
+            length = prefix[length - 1];
         }
-        if (pattern[i] == pattern[k]) {
-            ++k;
+        if (pattern[i] == pattern[length]) {
+            ++length;
         }
-        prefixFunc[i] = k;
+        prefix[i] = length;
     }
-
-    return prefixFunc;
+    return prefix;
 }
 
-std::vector<TPosition> KmpSearch(
-    const std::vector<TToken> &pattern,
-    const std::vector<TToken> &text,
-    const std::vector<TPosition> &positions
-) {
-    int patternLen = static_cast<int>(pattern.size());
-    int textLen = static_cast<int>(text.size());
-    std::vector<TPosition> results;
+KmpMatcher::KmpMatcher(std::vector<Token> pattern)
+    : pattern_(std::move(pattern)),
+      prefix_(buildPrefixFunction(pattern_)),
+      window_(pattern_.size()) {
+}
 
-    if (patternLen == 0 || textLen == 0) {
-        return results;
+std::optional<Position> KmpMatcher::feed(Token token, Position position) {
+    if (pattern_.empty()) {
+        return std::nullopt;
     }
+    window_[fed_ % pattern_.size()] = position;
+    ++fed_;
 
-    std::vector<int> prefixFunc = BuildPrefixFunction(pattern);
-    int matched = 0;
+    while (matched_ > 0 && token != pattern_[matched_]) {
+        matched_ = prefix_[matched_ - 1];
+    }
+    if (token == pattern_[matched_]) {
+        ++matched_;
+    }
+    if (matched_ < pattern_.size()) {
+        return std::nullopt;
+    }
+    matched_ = prefix_[matched_ - 1];
+    return window_[fed_ % pattern_.size()];
+}
 
-    for (int i = 0; i < textLen; ++i) {
-        while (matched > 0 && text[i] != pattern[matched]) {
-            matched = prefixFunc[matched - 1];
-        }
-        if (text[i] == pattern[matched]) {
-            ++matched;
-        }
-        if (matched == patternLen) {
-            int startIndex = i - patternLen + 1;
-            results.push_back(positions[startIndex]);
-            matched = prefixFunc[matched - 1];
+void KmpMatcher::reset() {
+    fed_ = 0;
+    matched_ = 0;
+}
+
+std::vector<Position> kmpSearch(const std::vector<Token>& pattern, const std::vector<Token>& text,
+                                const std::vector<Position>& positions) {
+    std::vector<Position> matches;
+    KmpMatcher matcher(pattern);
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        if (const auto match = matcher.feed(text[i], positions[i])) {
+            matches.push_back(*match);
         }
     }
-
-    return results;
+    return matches;
 }

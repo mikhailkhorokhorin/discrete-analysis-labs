@@ -1,30 +1,31 @@
-\section{Тест производительности}
+\section{Performance test}
 
-\subsection{Методика}
+\subsection{Method}
 
-Тест сравнивает реализованный алгоритм Кнута"---Морриса"---Пратта с наивным поиском.
-Наивный алгоритм для каждой позиции текста последовательно проверяет совпадение
-с образцом, поэтому в худшем случае работает за $O(|P| \cdot |T|)$.
-КМП строит префикс-функцию и затем просматривает текст один раз, что даёт
-$O(|P| + |T|)$.
+The test compares the implemented Knuth--Morris--Pratt algorithm with naive search.
+For each position of the text the naive algorithm checks the pattern symbol by symbol,
+so in the worst case it runs in $O(|P| \cdot |T|)$.
+KMP builds the prefix function and then scans the text once, which gives
+$O(|P| + |T|)$. The benchmark measures the same \texttt{KmpMatcher} that the application uses
+(through \texttt{kmpSearch}).
 
-Проводятся две серии экспериментов. В первой серии генерируется случайный текст над
-алфавитом из 10 случайных чисел, длина образца равна 8. Во второй серии используется
-худший случай для наивного поиска: образец состоит из 19 единиц и завершающей двойки,
-а текст состоит только из единиц.
+Two series of experiments are carried out. In the first series a random text is generated over
+an alphabet of 10 random numbers, the pattern length is 8. The second series uses the worst case
+for naive search: the pattern consists of 19 ones followed by a two,
+and the text consists only of ones.
 
-Время поиска замеряется с помощью \texttt{std::chrono::high\_resolution\_clock}.
-Генерация данных и чтение входа в замер не входят. После каждого запуска бенчмарк
-сравнивает полные списки найденных позиций для КМП и наивного алгоритма.
+The search time is measured with \texttt{std::chrono::steady\_clock}.
+Data generation and input reading are not included in the measurement. After each run the
+benchmark compares the full lists of found positions for KMP and the naive algorithm.
 
-\subsection{Результаты}
+\subsection{Results}
 
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|r|r|r|}
 \hline
 \rowcolor{lightgray}
-$|T|$ & КМП, мкс & Наивный поиск, мкс \\
+$|T|$ & KMP, $\mu$s & Naive search, $\mu$s \\
 \hline
 10\,000 & 27 & 23 \\
 \hline
@@ -37,7 +38,7 @@ $|T|$ & КМП, мкс & Наивный поиск, мкс \\
 5\,000\,000 & 10\,324 & 9\,712 \\
 \hline
 \end{tabular}
-\caption{Случайный текст, алфавит из 10 чисел, длина образца 8}
+\caption{Random text, alphabet of 10 numbers, pattern length 8}
 \end{table}
 
 \begin{table}[!ht]
@@ -45,7 +46,7 @@ $|T|$ & КМП, мкс & Наивный поиск, мкс \\
 \begin{tabular}{|r|r|r|}
 \hline
 \rowcolor{lightgray}
-$|T|$ & КМП, мкс & Наивный поиск, мкс \\
+$|T|$ & KMP, $\mu$s & Naive search, $\mu$s \\
 \hline
 100\,000 & 1\,610 & 2\,310 \\
 \hline
@@ -56,12 +57,16 @@ $|T|$ & КМП, мкс & Наивный поиск, мкс \\
 5\,000\,000 & 11\,924 & 55\,733 \\
 \hline
 \end{tabular}
-\caption{Худший случай для наивного поиска}
+\caption{Worst case for naive search}
 \end{table}
 
 \begin{alltt}
-# bash lab4/benchmark/run_bench.sh
-=== Random text, alphabet=10, pattern_len=8 ===
+# make build PRESET=release
+# for n in 10000 100000 500000 1000000 5000000; do
+>   echo "n=$n:"
+>   python3 lab4/benchmark/generator.py $n 8 42 10
+>   build/release/lab4/lab4_benchmark < lab4/benchmark/tests.txt
+> done
 n=10000:
 KMP time: 27us
 Naive search time: 23us
@@ -93,7 +98,11 @@ KMP matches: 0
 Naive matches: 0
 Results equal: yes
 
-=== Worst case for naive: pattern=AAA...AB, text=AAA...A ===
+# for n in 100000 500000 1000000 5000000; do
+>   echo "n=$n:"
+>   python3 lab4/benchmark/generator_worst.py $n
+>   build/release/lab4/lab4_benchmark < lab4/benchmark/tests.txt
+> done
 n=100000:
 KMP time: 1610us
 Naive search time: 2310us
@@ -120,16 +129,18 @@ Naive matches: 0
 Results equal: yes
 \end{alltt}
 
-\subsection{Анализ результатов}
+\subsection{Analysis of results}
 
-На случайных данных наивный поиск часто прекращает проверку после первого или второго
-числа образца, поэтому его практическое время близко к линейному. Из-за этого КМП
-не получает заметного преимущества: на части запусков он немного быстрее, на части
-медленнее из-за дополнительных обращений к префикс-функции.
+On random data naive search usually stops checking after the first or second number of the
+pattern, so its practical running time is close to linear. Because of this KMP gets no noticeable
+advantage: in some runs it is slightly faster, in others slightly slower due to the additional
+accesses to the prefix function.
 
-В худшем случае разница становится существенной. При $|T| = 5\,000\,000$ наивный
-алгоритм тратит \textbf{55\,733 мкс}, а КМП~--- \textbf{11\,924 мкс}, то есть
-КМП быстрее примерно в \textbf{4.7 раза}. Это соответствует теоретической разнице
-между $O(|P| \cdot |T|)$ и $O(|P| + |T|)$.
+In the worst case the difference becomes significant. For $|T| = 5\,000\,000$ the naive
+algorithm takes \textbf{55\,733 $\mu$s}, while KMP takes \textbf{11\,924 $\mu$s}, that is,
+KMP is about \textbf{4.7 times} faster. This agrees with the theoretical difference
+between $O(|P| \cdot |T|)$ and $O(|P| + |T|)$. The KMP time for $|T| = 100\,000$ is higher than for
+$500\,000$: a run of about a millisecond is dominated by measurement noise (cold caches and the
+first access to freshly allocated memory), so the comparison relies on the larger sizes.
 
 \pagebreak

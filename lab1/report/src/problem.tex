@@ -1,13 +1,70 @@
-\CWHeader{Лабораторная работа \textnumero 1}
+\CWHeader{Laboratory work No.~1}
 
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor{lightgray}
+\multicolumn{2}{|c|}{J. 4-1} \\
+\hline
+Time limit & 3 seconds \\
+\hline
+Memory limit & 300 MB \\
+\hline
+Input & standard input or \texttt{input.txt} \\
+\hline
+Output & standard output or \texttt{output.txt} \\
+\hline
+\end{tabular}
+\end{table}
+
+{\sloppy
 \CWProblem{
-Требуется разработать программу, осуществляющую ввод пар \enquote{ключ-значение}, их
-упорядочивание по возрастанию ключа указанным алгоритмом сортировки за линейное время и вывод отсортированной последовательности.
+Implement a program that reads key-value pairs, sorts them by key in ascending order
+using a linear-time sorting algorithm, and outputs the sorted sequence. The variant is
+defined by the key type (and the corresponding sorting method) and the value type.
 
-{\bfseries Вариант сортировки:} Поразрядная сортировка.
+{\bfseries Sorting method:} radix sort.
 
-{\bfseries Вариант ключа:} { \normalfont\ttfamily даты в формате DD.MM.YYYY, например 1.1.1, 01.09.2009, 31.12.2009. }
+{\bfseries Key type:} dates in the format \texttt{DD.MM.YYYY}, e.g. \texttt{1.1.1},
+\texttt{1.9.2009}, \texttt{01.09.2009}, \texttt{31.12.2009}.
 
-{\bfseries Вариант значения:} { \normalfont\ttfamily строки фиксированной длины 64 символа. Входные строки могут быть короче и дополняются нулями до 64 символов, которые не выводятся. }
+{\bfseries Value type:} fixed-length strings of 64 characters. Input strings may be
+shorter; in that case they are padded with null characters up to 64, which are not printed.
 }
+\par}
+
+\subsection*{Input format}
+
+Each non-empty line of the input contains a key-value pair: the key as specified above,
+followed by a tab character, followed by the corresponding value.
+
+\subsection*{Output format}
+
+The output contains the same lines as the input (excluding empty ones), in sorted order.
+
+\subsection*{Example}
+
+Input:
+
+{\footnotesize
+\begin{alltt}
+1.1.1       n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+01.02.2008  n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+1.1.1       n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naa
+01.02.2008  n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+\end{alltt}
+}
+
+Output:
+
+{\footnotesize
+\begin{alltt}
+1.1.1       n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+1.1.1       n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naa
+01.02.2008  n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+01.02.2008  n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+\end{alltt}
+}
+
 \pagebreak

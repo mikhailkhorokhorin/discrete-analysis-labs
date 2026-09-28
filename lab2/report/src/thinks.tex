@@ -1,16 +1,14 @@
-\section{Выводы}
+\section{Conclusions}
 
-Выполнив данную лабораторную работу по курсу \enquote{Дискретный анализ},
-я разобрался с устройством и реализацией PATRICIA-дерева. Изучил механизм критических
-битов и обратных рёбер, научился корректно реализовывать операции вставки, удаления
-и поиска с учётом всех граничных случаев (удаление листа, удаление внутреннего узла,
-единственный узел в дереве). Реализовал бинарную сериализацию с валидацией формата
-и атомарной загрузкой.
+In this laboratory work for the course \enquote{Discrete Analysis} I studied the structure and the
+implementation of the PATRICIA tree. I learned the mechanism of critical bits and back edges and
+implemented insertion, removal and search correctly with all boundary cases (removal of a leaf,
+removal of an internal node, a single node in the tree). I implemented binary serialization with
+format validation and atomic loading.
 
-В ходе оптимизации применил разделение данных на горячую и холодную части, что снизило
-число промахов кэша при обходе дерева и дало ускорение в 1.8$\times$ на больших входных
-данных. Также убедился, что несмотря на теоретическую оптимальность PATRICIA по длине
-ключа, хеш-таблица с $O(1)$ операциями превосходит её по абсолютной скорости на
-однородных рабочих нагрузках.
+The benchmark against \texttt{std::map} showed that the overhead of PATRICIA does not pay off on
+small dictionaries, while for $N \geq 500\,000$ keys PATRICIA becomes faster in most operations,
+because the descent compares single critical bits instead of whole strings at every level.
+Removal remains the most expensive operation because of the restoration of back edges.
 
 \pagebreak

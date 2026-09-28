@@ -1,192 +1,245 @@
+#include <algorithm>
+#include <array>
+#include <charconv>
+#include <cstddef>
 #include <cstdint>
+#include <exception>
+#include <iosfwd>
 #include <iostream>
+#include <istream>
+#include <ostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <system_error>
 #include <utility>
 
-const int BYTE_BASE = 256;
-const int BYTE_MASK = 0xFF;
-const int UINT32_BYTES = 4;
-
-struct TPair {
-    std::string raw;
-    uint32_t key;
-
-    TPair() : raw(), key(0) {
-    }
-
-    explicit TPair(const std::string &line) : raw(line), key(0) {
-        size_t dot1 = raw.find('.');
-        size_t dot2 = raw.find('.', dot1 + 1);
-        size_t tab = raw.find('\t');
-
-        if (dot1 == std::string::npos || dot2 == std::string::npos || tab == std::string::npos) {
-            throw std::invalid_argument("Invalid input format");
-        }
-
-        int day = std::stoi(raw.substr(0, dot1));
-        int month = std::stoi(raw.substr(dot1 + 1, dot2 - dot1 - 1));
-        int year = std::stoi(raw.substr(dot2 + 1, tab - dot2 - 1));
-
-        if (day < 1 || day > 31 || month < 1 || month > 12) {
-            throw std::invalid_argument("Invalid date");
-        }
-
-        key = static_cast<uint32_t>(year) * 10000 + static_cast<uint32_t>(month) * 100
-              + static_cast<uint32_t>(day);
-    }
-
-    TPair(const TPair &other) : raw(other.raw), key(other.key) {
-    }
-
-    TPair &operator=(const TPair &other) {
-        if (this != &other) {
-            raw = other.raw;
-            key = other.key;
-        }
-        return *this;
-    }
-
-    TPair(TPair &&other) noexcept : raw(std::move(other.raw)), key(other.key) {
-    }
-
-    TPair &operator=(TPair &&other) noexcept {
-        if (this != &other) {
-            raw = std::move(other.raw);
-            key = other.key;
-        }
-        return *this;
-    }
-};
-
 template <typename T>
-class TVector {
-  private:
-    T *data;
-    size_t size;
-    size_t capacity;
+class Vector {
+public:
+    Vector() = default;
 
-    void Reallocate(size_t newCapacity) {
-        T *newData = new T[newCapacity];
-        for (size_t i = 0; i < size; i++) {
-            newData[i] = std::move(data[i]);
-        }
-        delete[] data;
-        data = newData;
-        capacity = newCapacity;
-    }
+    explicit Vector(std::size_t count)
+        : data_(count > 0 ? new T[count] : nullptr), size_(count), capacity_(count) {}
 
-  public:
-    TVector() : data(nullptr), size(0), capacity(0) {
-    }
-
-    explicit TVector(size_t n) : data(nullptr), size(n), capacity(n) {
-        if (n > 0) {
-            data = new T[n];
+    Vector(const Vector& other)
+        : data_(other.capacity_ > 0 ? new T[other.capacity_] : nullptr),
+          size_(other.size_),
+          capacity_(other.capacity_) {
+        for (std::size_t i = 0; i < size_; ++i) {
+            data_[i] = other.data_[i];
         }
     }
 
-    TVector(const TVector &other) : data(nullptr), size(other.size), capacity(other.capacity) {
-        if (capacity > 0) {
-            data = new T[capacity];
-            for (size_t i = 0; i < size; ++i) {
-                data[i] = other.data[i];
-            }
+    Vector& operator=(const Vector& other) {
+        if (this != &other) {
+            Vector copy(other);
+            swap(copy);
         }
-    }
-
-    TVector &operator=(const TVector &other) {
-        if (this == &other) {
-            return *this;
-        }
-        T *newData = nullptr;
-        if (other.capacity > 0) {
-            newData = new T[other.capacity];
-            for (size_t i = 0; i < other.size; ++i) {
-                newData[i] = other.data[i];
-            }
-        }
-        delete[] data;
-        data = newData;
-        size = other.size;
-        capacity = other.capacity;
         return *this;
     }
 
-    TVector(TVector &&other) noexcept
-        : data(other.data), size(other.size), capacity(other.capacity) {
-        other.data = nullptr;
-        other.size = 0;
-        other.capacity = 0;
-    }
+    Vector(Vector&& other) noexcept
+        : data_(std::exchange(other.data_, nullptr)),
+          size_(std::exchange(other.size_, 0)),
+          capacity_(std::exchange(other.capacity_, 0)) {}
 
-    TVector &operator=(TVector &&other) noexcept {
-        if (this == &other) {
-            return *this;
+    Vector& operator=(Vector&& other) noexcept {
+        if (this != &other) {
+            delete[] data_;
+            data_ = std::exchange(other.data_, nullptr);
+            size_ = std::exchange(other.size_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
         }
-        delete[] data;
-        data = other.data;
-        size = other.size;
-        capacity = other.capacity;
-        other.data = nullptr;
-        other.size = 0;
-        other.capacity = 0;
         return *this;
     }
 
-    ~TVector() {
-        delete[] data;
+    ~Vector() { delete[] data_; }
+
+    void swap(Vector& other) noexcept {
+        std::swap(data_, other.data_);
+        std::swap(size_, other.size_);
+        std::swap(capacity_, other.capacity_);
     }
 
-    size_t Size() const {
-        return size;
-    }
+    [[nodiscard]] std::size_t size() const { return size_; }
+    [[nodiscard]] std::size_t capacity() const { return capacity_; }
+    [[nodiscard]] bool empty() const { return size_ == 0; }
 
-    void PushBack(T &&value) {
-        if (size == capacity) {
-            Reallocate((capacity == 0) ? 1 : capacity * 2);
+    T* data() { return data_; }
+    const T* data() const { return data_; }
+
+    T* begin() { return data_; }
+    T* end() { return data_ + size_; }
+    const T* begin() const { return data_; }
+    const T* end() const { return data_ + size_; }
+
+    void pushBack(T value) {
+        if (size_ == capacity_) {
+            reallocate(capacity_ == 0 ? 1 : capacity_ * 2);
         }
-        data[size++] = std::move(value);
+        data_[size_++] = std::move(value);
     }
 
-    T &operator[](size_t i) {
-        return data[i];
+    T& operator[](std::size_t index) { return data_[index]; }
+    const T& operator[](std::size_t index) const { return data_[index]; }
+
+private:
+    void reallocate(std::size_t newCapacity) {
+        T* newData = new T[newCapacity];
+        for (std::size_t i = 0; i < size_; ++i) {
+            newData[i] = std::move(data_[i]);
+        }
+        delete[] data_;
+        data_ = newData;
+        capacity_ = newCapacity;
     }
 
-    const T &operator[](size_t i) const {
-        return data[i];
-    }
+    T* data_ = nullptr;
+    std::size_t size_ = 0;
+    std::size_t capacity_ = 0;
 };
 
-void CountingPass(TVector<TPair> &input, TVector<TPair> &output, int byteIndex) {
-    int count[BYTE_BASE];
-    for (int i = 0; i < BYTE_BASE; ++i) {
-        count[i] = 0;
+inline constexpr std::size_t VALUE_LENGTH = 64;
+
+struct Pair {
+    std::string raw;
+    std::uint32_t key = 0;
+};
+
+bool isBlank(std::string_view line);
+std::uint32_t parseDateKey(std::string_view date);
+Pair parsePair(std::string line);
+Vector<Pair> readPairs(std::istream& input);
+void writePairs(std::ostream& output, const Vector<Pair>& pairs);
+
+void countingPass(Vector<Pair>& input, Vector<Pair>& output, int byteIndex);
+void radixSort(Vector<Pair>& data);
+
+namespace {
+
+constexpr std::uint32_t MAX_DAY = 31;
+constexpr std::uint32_t MAX_MONTH = 12;
+constexpr std::uint32_t MAX_YEAR = 9999;
+constexpr std::uint32_t YEAR_WEIGHT = 10000;
+constexpr std::uint32_t MONTH_WEIGHT = 100;
+
+std::uint32_t parseNumber(std::string_view text) {
+    const bool allDigits =
+        std::ranges::all_of(text, [](char symbol) { return symbol >= '0' && symbol <= '9'; });
+    if (text.empty() || !allDigits) {
+        throw std::invalid_argument("invalid date");
     }
-    for (size_t i = 0; i < input.Size(); ++i) {
-        uint8_t byteVal = static_cast<uint8_t>((input[i].key >> (byteIndex * 8)) & BYTE_MASK);
-        count[byteVal]++;
+    std::uint32_t value = 0;
+    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (error != std::errc{} || end != text.data() + text.size()) {
+        throw std::invalid_argument("invalid date");
     }
-    for (int i = 1; i < BYTE_BASE; ++i) {
-        count[i] += count[i - 1];
+    return value;
+}
+
+}
+
+bool isBlank(std::string_view line) {
+    return std::ranges::all_of(line, [](char symbol) {
+        return symbol == ' ' || symbol == '\t' || symbol == '\r' || symbol == '\n' ||
+               symbol == '\v' || symbol == '\f';
+    });
+}
+
+std::uint32_t parseDateKey(std::string_view date) {
+    const std::size_t firstDot = date.find('.');
+    if (firstDot == std::string_view::npos) {
+        throw std::invalid_argument("invalid date");
     }
-    for (int i = static_cast<int>(input.Size()) - 1; i >= 0; --i) {
-        uint8_t byteVal = static_cast<uint8_t>((input[i].key >> (byteIndex * 8)) & BYTE_MASK);
-        int pos = --count[byteVal];
-        output[pos] = std::move(input[i]);
+    const std::size_t secondDot = date.find('.', firstDot + 1);
+    if (secondDot == std::string_view::npos) {
+        throw std::invalid_argument("invalid date");
+    }
+    const std::uint32_t day = parseNumber(date.substr(0, firstDot));
+    const std::uint32_t month = parseNumber(date.substr(firstDot + 1, secondDot - firstDot - 1));
+    const std::uint32_t year = parseNumber(date.substr(secondDot + 1));
+    if (day < 1 || day > MAX_DAY || month < 1 || month > MAX_MONTH || year > MAX_YEAR) {
+        throw std::invalid_argument("invalid date");
+    }
+    return year * YEAR_WEIGHT + month * MONTH_WEIGHT + day;
+}
+
+Pair parsePair(std::string line) {
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
+    const std::size_t tab = line.find('\t');
+    if (tab == std::string::npos) {
+        throw std::invalid_argument("missing tab separator");
+    }
+    if (line.size() - tab - 1 > VALUE_LENGTH) {
+        throw std::invalid_argument("value is longer than 64 characters");
+    }
+    const std::uint32_t key = parseDateKey(std::string_view(line).substr(0, tab));
+    return Pair{.raw = std::move(line), .key = key};
+}
+
+Vector<Pair> readPairs(std::istream& input) {
+    Vector<Pair> pairs;
+    std::string line;
+    std::size_t lineNumber = 0;
+    while (std::getline(input, line)) {
+        ++lineNumber;
+        if (isBlank(line)) {
+            continue;
+        }
+        try {
+            pairs.pushBack(parsePair(std::exchange(line, {})));
+        } catch (const std::invalid_argument& error) {
+            throw std::invalid_argument("line " + std::to_string(lineNumber) + ": " + error.what());
+        }
+    }
+    return pairs;
+}
+
+void writePairs(std::ostream& output, const Vector<Pair>& pairs) {
+    for (const Pair& pair : pairs) {
+        output << pair.raw << '\n';
     }
 }
 
-void RadixSort(TVector<TPair> &data) {
-    if (data.Size() < 2) {
+namespace {
+
+constexpr std::size_t BYTE_BASE = 256;
+constexpr std::uint32_t BYTE_MASK = 0xFF;
+constexpr int KEY_BYTES = 4;
+constexpr int BITS_PER_BYTE = 8;
+
+std::size_t byteAt(std::uint32_t key, int byteIndex) {
+    return (key >> (byteIndex * BITS_PER_BYTE)) & BYTE_MASK;
+}
+
+}
+
+void countingPass(Vector<Pair>& input, Vector<Pair>& output, int byteIndex) {
+    std::array<std::size_t, BYTE_BASE> count{};
+    for (const Pair& pair : input) {
+        ++count[byteAt(pair.key, byteIndex)];
+    }
+    for (std::size_t i = 1; i < BYTE_BASE; ++i) {
+        count[i] += count[i - 1];
+    }
+    for (std::size_t i = input.size(); i > 0; --i) {
+        Pair& pair = input[i - 1];
+        const std::size_t position = --count[byteAt(pair.key, byteIndex)];
+        output[position] = std::move(pair);
+    }
+}
+
+void radixSort(Vector<Pair>& data) {
+    if (data.size() < 2) {
         return;
     }
-    TVector<TPair> buffer(data.Size());
-    for (int byte = 0; byte < UINT32_BYTES; ++byte) {
-        CountingPass(data, buffer, byte);
-        for (size_t i = 0; i < data.Size(); ++i) {
-            data[i] = std::move(buffer[i]);
-        }
+    Vector<Pair> buffer(data.size());
+    for (int byteIndex = 0; byteIndex < KEY_BYTES; ++byteIndex) {
+        countingPass(data, buffer, byteIndex);
+        data.swap(buffer);
     }
 }
 
@@ -194,20 +247,13 @@ int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
-    TVector<TPair> data;
-    std::string line;
-
-    while (std::getline(std::cin, line)) {
-        if (!line.empty()) {
-            data.PushBack(TPair(line));
-        }
+    try {
+        Vector<Pair> pairs = readPairs(std::cin);
+        radixSort(pairs);
+        writePairs(std::cout, pairs);
+    } catch (const std::exception& error) {
+        std::cerr << "ERROR: " << error.what() << '\n';
+        return 1;
     }
-
-    RadixSort(data);
-
-    for (size_t i = 0; i < data.Size(); ++i) {
-        std::cout << data[i].raw << "\n";
-    }
-
     return 0;
 }

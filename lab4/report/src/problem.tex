@@ -1,17 +1,53 @@
-\CWHeader{Лабораторная работа \textnumero 4}
+\CWHeader{Laboratory work No. 4}
 
 \CWProblem{
-Необходимо реализовать один из стандартных алгоритмов поиска образцов для указанного алфавита.
+Implement one of the standard pattern matching algorithms for the given alphabet.
 
-{\bfseries Вариант алгоритма:} Поиск одного образца при помощи алгоритма Кнута"---Морриса"---Пратта.
+{\bfseries Algorithm variant:} search for one pattern using the Knuth--Morris--Pratt algorithm.
 
-{\bfseries Вариант алфавита:} Числа в диапазоне от 0 до $2^{32}-1$.
+{\bfseries Alphabet variant:} numbers in the range from $0$ to $2^{32}-1$.
 
-Запрещается реализовывать алгоритмы на алфавитах меньшей размерности, чем указано в задании.
-
-Образец задаётся на первой строке входного файла. Затем следует текст, состоящий из чисел,
-в котором нужно найти заданный образец. Для каждого вхождения выводятся два числа через
-запятую: номер строки и номер слова в строке, с которого начинается найденный образец.
-Нумерация начинается с единицы.
+Implementing the algorithm on an alphabet of smaller size than specified in the task is not allowed.
 }
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+Time limit & 10 seconds \\
+\hline
+Memory limit & 64 MB \\
+\hline
+Input & standard input or \texttt{input.txt} \\
+\hline
+Output & standard output or \texttt{output.txt} \\
+\hline
+\end{tabular}
+\caption{Limits of task B.\,1-2}
+\end{table}
+
+{\bfseries Input format.} The pattern is given on the first line. Then follows the text
+consisting of numbers, in which the pattern must be found.
+There are no limits on line length or on the number of numbers in a line.
+
+{\bfseries Output format.} For each occurrence of the pattern, output two numbers separated
+by a comma: the line number and the word number in the line where the pattern starts.
+Numbering starts from 1. Line numbers are counted from the start of the text, not including
+the pattern line.
+
+{\bfseries Example.}
+
+Input:
+\begin{alltt}
+11 45 11 45 90
+0011 45 011 0045 11 45 90    11
+45 11 45 90
+\end{alltt}
+
+Output:
+\begin{alltt}
+1, 3
+1, 8
+\end{alltt}
+
 \pagebreak

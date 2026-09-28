@@ -1,12 +1,44 @@
-\CWHeader{Лабораторная работа \textnumero 5}
+\CWHeader{Laboratory work No. 5}
 
 \CWProblem{
-Необходимо найти самую длинную общую подстроку двух строк с использованием суффиксного дерева.
+Find the longest common substring of two strings using a suffix tree.
 
-{\bfseries Вариант задачи:} поиск наибольшей общей подстроки.
-
-На вход подаются две строки. На первой строке вывода нужно распечатать длину максимальной
-общей подстроки, затем перечислить все возможные варианты общих подстрок этой длины
-в порядке лексикографического возрастания без повторов.
+{\bfseries Task variant:} F. 5, search for the longest common substring.
 }
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+Time limit & 15 seconds \\
+\hline
+Memory limit & 1 GB \\
+\hline
+Input & standard input or \texttt{input.txt} \\
+\hline
+Output & standard output or \texttt{output.txt} \\
+\hline
+\end{tabular}
+\end{table}
+
+{\bfseries Input format.} Two strings, one per line.
+
+{\bfseries Output format.} The length of the longest common substring on the first line,
+then all possible common substrings of that length in lexicographic order without duplicates.
+
+{\bfseries Example.}
+
+Input:
+\begin{alltt}
+xabay
+xabcbay
+\end{alltt}
+
+Output:
+\begin{alltt}
+3
+bay
+xab
+\end{alltt}
+
 \pagebreak

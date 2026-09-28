@@ -1,16 +1,37 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <utility>
+#include <optional>
 #include <vector>
 
-using TToken = uint32_t;
-using TPosition = std::pair<int, int>;
+using Token = std::uint32_t;
 
-std::vector<int> BuildPrefixFunction(const std::vector<TToken> &pattern);
+struct Position {
+    std::size_t line = 0;
+    std::size_t word = 0;
 
-std::vector<TPosition> KmpSearch(
-    const std::vector<TToken> &pattern,
-    const std::vector<TToken> &text,
-    const std::vector<TPosition> &positions
-);
+    bool operator==(const Position& other) const = default;
+};
+
+std::vector<std::size_t> buildPrefixFunction(const std::vector<Token>& pattern);
+
+class KmpMatcher {
+public:
+    explicit KmpMatcher(std::vector<Token> pattern);
+
+    std::optional<Position> feed(Token token, Position position);
+    void reset();
+
+    [[nodiscard]] const std::vector<Token>& pattern() const { return pattern_; }
+
+private:
+    std::vector<Token> pattern_;
+    std::vector<std::size_t> prefix_;
+    std::vector<Position> window_;
+    std::size_t fed_ = 0;
+    std::size_t matched_ = 0;
+};
+
+std::vector<Position> kmpSearch(const std::vector<Token>& pattern, const std::vector<Token>& text,
+                                const std::vector<Position>& positions);
