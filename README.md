@@ -1,7 +1,5 @@
 # Discrete Analysis Labs
 
-C++20 laboratory works for the Discrete Analysis course with GoogleTest tests, benchmarks and LaTeX reports.
-
 | No. | Topic |
 | --- | --- |
 | 1 | [Radix Sort](lab1/) |
