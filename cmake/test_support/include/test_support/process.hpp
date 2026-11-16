@@ -47,7 +47,7 @@ inline std::vector<std::filesystem::path> inputFiles(const std::filesystem::path
             files.push_back(entry.path());
         }
     }
-    std::sort(files.begin(), files.end());
+    std::ranges::sort(files);
     return files;
 }
 

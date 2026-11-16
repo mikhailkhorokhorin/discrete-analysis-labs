@@ -10,6 +10,7 @@ CI_EXTRA :=
 PRE_COMMIT_CONFIG := .config/.pre-commit-config.yaml
 
 -include .config/local.mk
+-include .config/private.mk
 
 .DEFAULT_GOAL := help
 
@@ -57,7 +58,7 @@ tidy:
 	cmake --preset debug
 	run-clang-tidy -quiet -p build/debug \
 		-header-filter '^$(CURDIR)/.*/include/.*' \
-		'^$(CURDIR)/.*/(src|app)/[^/]*\.cpp$$'
+		'^$(CURDIR)/.*/(src|app|tests|benchmark)/[^/]*\.cpp$$'
 
 sanitize:
 	cmake --preset asan
