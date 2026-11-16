@@ -1,4 +1,7 @@
+#include <algorithm>
+#include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -14,6 +17,8 @@ namespace {
 using Clock = std::chrono::steady_clock;
 using Duration = std::chrono::microseconds;
 
+constexpr std::size_t RUNS = 5;
+
 struct Workload {
     std::vector<std::pair<std::string, std::uint64_t>> inserts;
     std::vector<std::string> lookups;
@@ -21,13 +26,18 @@ struct Workload {
 };
 
 struct Timings {
-    long long insert = 0;
-    long long find = 0;
-    long long remove = 0;
+    std::array<long long, RUNS> insert{};
+    std::array<long long, RUNS> find{};
+    std::array<long long, RUNS> remove{};
 };
 
 long long elapsedSince(Clock::time_point start) {
     return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+long long median(std::array<long long, RUNS> timings) {
+    std::ranges::sort(timings);
+    return timings[RUNS / 2];
 }
 
 Workload readWorkload(std::istream& input) {
@@ -55,63 +65,57 @@ Workload readWorkload(std::istream& input) {
     return workload;
 }
 
-Timings measurePatricia(const Workload& workload) {
-    Timings timings;
+std::size_t runPatricia(const Workload& workload, Timings& timings, std::size_t run) {
     PatriciaTrie trie;
 
     auto start = Clock::now();
     for (const auto& [word, value] : workload.inserts) {
         trie.insert(word, value);
     }
-    timings.insert = elapsedSince(start);
+    timings.insert[run] = elapsedSince(start);
 
     std::size_t found = 0;
     start = Clock::now();
     for (const std::string& word : workload.lookups) {
         found += trie.find(word) ? 1 : 0;
     }
-    timings.find = elapsedSince(start);
+    timings.find[run] = elapsedSince(start);
 
     start = Clock::now();
     for (const std::string& word : workload.removes) {
         trie.remove(word);
     }
-    timings.remove = elapsedSince(start);
-
-    std::cerr << "PATRICIA found " << found << " words\n";
-    return timings;
+    timings.remove[run] = elapsedSince(start);
+    return found;
 }
 
-Timings measureMap(const Workload& workload) {
-    Timings timings;
+std::size_t runMap(const Workload& workload, Timings& timings, std::size_t run) {
     std::map<std::string, std::uint64_t> map;
 
     auto start = Clock::now();
     for (const auto& [word, value] : workload.inserts) {
         map.emplace(word, value);
     }
-    timings.insert = elapsedSince(start);
+    timings.insert[run] = elapsedSince(start);
 
     std::size_t found = 0;
     start = Clock::now();
     for (const std::string& word : workload.lookups) {
         found += map.contains(word) ? 1 : 0;
     }
-    timings.find = elapsedSince(start);
+    timings.find[run] = elapsedSince(start);
 
     start = Clock::now();
     for (const std::string& word : workload.removes) {
         map.erase(word);
     }
-    timings.remove = elapsedSince(start);
-
-    std::cerr << "std::map found " << found << " words\n";
-    return timings;
+    timings.remove[run] = elapsedSince(start);
+    return found;
 }
 
 void printTimings(const std::string& name, const Timings& timings) {
-    std::cout << name << " Insert=" << timings.insert << "us Find=" << timings.find
-              << "us Remove=" << timings.remove << "us\n";
+    std::cout << name << " Insert=" << median(timings.insert) << "us Find=" << median(timings.find)
+              << "us Remove=" << median(timings.remove) << "us\n";
 }
 
 }
@@ -121,11 +125,18 @@ int main() {
     std::cin.tie(nullptr);
 
     const Workload workload = readWorkload(std::cin);
-    const Timings patricia = measurePatricia(workload);
-    const Timings map = measureMap(workload);
 
-    std::cout << "N=" << workload.inserts.size() << "\n";
+    Timings patricia;
+    Timings map;
+    bool equal = true;
+    for (std::size_t run = 0; run < RUNS; ++run) {
+        const std::size_t patriciaFound = runPatricia(workload, patricia, run);
+        const std::size_t mapFound = runMap(workload, map, run);
+        equal = equal && patriciaFound == mapFound;
+    }
+
     printTimings("PATRICIA ", patricia);
     printTimings("std::map ", map);
-    return 0;
+    std::cout << "Results equal: " << (equal ? "yes" : "no") << "\n";
+    return equal ? 0 : 1;
 }

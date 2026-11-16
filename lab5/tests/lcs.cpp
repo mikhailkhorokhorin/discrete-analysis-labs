@@ -77,7 +77,10 @@ TEST(LcsTest, MatchesBruteForceOnRandomStrings) {
         for (char& symbol : second) {
             symbol = static_cast<char>('a' + letter(generator));
         }
-        SCOPED_TRACE(first + "|" + second);
+        std::string trace = first;
+        trace += '|';
+        trace += second;
+        SCOPED_TRACE(trace);
         ASSERT_EQ(longestCommonSubstrings(first, second), bruteForce(first, second));
     }
 }

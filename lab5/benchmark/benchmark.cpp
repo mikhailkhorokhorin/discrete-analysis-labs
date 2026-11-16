@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -14,9 +16,17 @@ using Clock = std::chrono::steady_clock;
 using Duration = std::chrono::microseconds;
 
 constexpr std::size_t DP_CELL_LIMIT = 25000000;
+constexpr std::size_t RUNS = 5;
+
+using Timings = std::array<long long, RUNS>;
 
 long long elapsedSince(Clock::time_point start) {
     return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+long long median(Timings timings) {
+    std::ranges::sort(timings);
+    return timings[RUNS / 2];
 }
 
 std::string readLine(std::istream& input) {
@@ -59,11 +69,15 @@ int main() {
     const std::string first = readLine(std::cin);
     const std::string second = readLine(std::cin);
 
-    auto start = Clock::now();
-    const LcsResult tree = longestCommonSubstrings(first, second);
-    const long long treeTime = elapsedSince(start);
+    Timings treeTimes{};
+    LcsResult tree;
+    for (long long& time : treeTimes) {
+        const auto start = Clock::now();
+        tree = longestCommonSubstrings(first, second);
+        time = elapsedSince(start);
+    }
 
-    std::cout << "Suffix tree LCS time: " << treeTime << "us\n";
+    std::cout << "Suffix tree LCS time: " << median(treeTimes) << "us\n";
     std::cout << "LCS length: " << tree.length << "\n";
     std::cout << "LCS count: " << tree.substrings.size() << "\n";
 
@@ -72,12 +86,16 @@ int main() {
         return 0;
     }
 
-    start = Clock::now();
-    const LcsResult dynamic = dynamicProgrammingLcs(first, second);
-    const long long dynamicTime = elapsedSince(start);
+    Timings dynamicTimes{};
+    LcsResult dynamic;
+    for (long long& time : dynamicTimes) {
+        const auto start = Clock::now();
+        dynamic = dynamicProgrammingLcs(first, second);
+        time = elapsedSince(start);
+    }
 
     const bool equal = tree == dynamic;
-    std::cout << "DP LCS time: " << dynamicTime << "us\n";
+    std::cout << "DP LCS time: " << median(dynamicTimes) << "us\n";
     std::cout << "DP LCS length: " << dynamic.length << "\n";
     std::cout << "DP LCS count: " << dynamic.substrings.size() << "\n";
     std::cout << "Results equal: " << (equal ? "yes" : "no") << "\n";

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -12,8 +14,17 @@ namespace {
 using Clock = std::chrono::steady_clock;
 using Duration = std::chrono::microseconds;
 
+constexpr std::size_t RUNS = 5;
+
+using Timings = std::array<long long, RUNS>;
+
 long long elapsedSince(Clock::time_point start) {
     return std::chrono::duration_cast<Duration>(Clock::now() - start).count();
+}
+
+long long median(Timings timings) {
+    std::ranges::sort(timings);
+    return timings[RUNS / 2];
 }
 
 std::vector<Position> naiveSearch(const std::vector<Token>& pattern, const std::vector<Token>& text,
@@ -58,17 +69,23 @@ int main() {
         }
     }
 
-    auto start = Clock::now();
-    const std::vector<Position> kmpResults = kmpSearch(pattern, text, positions);
-    const long long kmpTime = elapsedSince(start);
+    Timings kmpTimes{};
+    Timings naiveTimes{};
+    std::vector<Position> kmpResults;
+    std::vector<Position> naiveResults;
+    for (std::size_t run = 0; run < RUNS; ++run) {
+        auto start = Clock::now();
+        kmpResults = kmpSearch(pattern, text, positions);
+        kmpTimes[run] = elapsedSince(start);
 
-    start = Clock::now();
-    const std::vector<Position> naiveResults = naiveSearch(pattern, text, positions);
-    const long long naiveTime = elapsedSince(start);
+        start = Clock::now();
+        naiveResults = naiveSearch(pattern, text, positions);
+        naiveTimes[run] = elapsedSince(start);
+    }
 
     const bool equal = kmpResults == naiveResults;
-    std::cout << "KMP time: " << kmpTime << "us\n";
-    std::cout << "Naive search time: " << naiveTime << "us\n";
+    std::cout << "KMP time: " << median(kmpTimes) << "us\n";
+    std::cout << "Naive search time: " << median(naiveTimes) << "us\n";
     std::cout << "KMP matches: " << kmpResults.size() << "\n";
     std::cout << "Naive matches: " << naiveResults.size() << "\n";
     std::cout << "Results equal: " << (equal ? "yes" : "no") << "\n";

@@ -11,6 +11,7 @@ namespace {
 
 std::vector<Position> positionsFor(std::size_t count) {
     std::vector<Position> positions;
+    positions.reserve(count);
     for (std::size_t i = 0; i < count; ++i) {
         positions.push_back(Position{.line = 1, .word = i + 1});
     }
@@ -71,9 +72,8 @@ TEST(KmpMatcherTest, ResetForgetsPartialMatch) {
     matcher.reset();
     EXPECT_FALSE(matcher.feed(2, Position{.line = 1, .word = 2}).has_value());
     EXPECT_FALSE(matcher.feed(1, Position{.line = 2, .word = 1}).has_value());
-    const std::optional<Position> match = matcher.feed(2, Position{.line = 2, .word = 2});
-    ASSERT_TRUE(match.has_value());
-    EXPECT_EQ(*match, (Position{.line = 2, .word = 1}));
+    EXPECT_EQ(matcher.feed(2, Position{.line = 2, .word = 2}),
+              std::optional<Position>(Position{.line = 2, .word = 1}));
 }
 
 TEST(KmpMatcherTest, HandlesMaximalTokens) {
